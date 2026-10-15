@@ -61,19 +61,20 @@ function toPlace(
 }
 
 // 동네 지도용 한 번에 조회
-async function townPlaces(key: string, lat: number, lng: number, dong: string): Promise<KakaoPlace[]> {
+async function townPlaces(key: string, lat: number, lng: number, dong: string, radius: number): Promise<KakaoPlace[]> {
   const x = String(lng);
   const y = String(lat);
+  const R = String(Math.min(10000, Math.max(1000, radius)));
   const [bakeries, libs, parks, hospitals, pharmacies, schools, cares, fires, polices] = await Promise.all([
-    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 빵집`, x, y, radius: "3000", sort: "distance", size: "6" }),
-    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 도서관`, x, y, radius: "3000", sort: "distance", size: "6" }),
-    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 공원`, x, y, radius: "3000", sort: "distance", size: "8" }),
-    kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "HP8", x, y, radius: "3000", sort: "distance", size: "8" }),
-    kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "PM9", x, y, radius: "3000", sort: "distance", size: "8" }),
-    kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "SC4", x, y, radius: "3000", sort: "distance", size: "10" }),
-    kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "PS3", x, y, radius: "3000", sort: "distance", size: "6" }),
-    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 소방서`, x, y, radius: "4000", sort: "distance", size: "4" }),
-    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 경찰서`, x, y, radius: "4000", sort: "distance", size: "4" }),
+    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 빵집`, x, y, radius: R, sort: "distance", size: "6" }),
+    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 도서관`, x, y, radius: R, sort: "distance", size: "6" }),
+    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 공원`, x, y, radius: R, sort: "distance", size: "8" }),
+    kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "HP8", x, y, radius: R, sort: "distance", size: "8" }),
+    kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "PM9", x, y, radius: R, sort: "distance", size: "8" }),
+    kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "SC4", x, y, radius: R, sort: "distance", size: "10" }),
+    kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "PS3", x, y, radius: R, sort: "distance", size: "6" }),
+    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 소방서`, x, y, radius: R, sort: "distance", size: "4" }),
+    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 경찰서`, x, y, radius: R, sort: "distance", size: "4" }),
   ]);
 
   const out: KakaoPlace[] = [];
@@ -153,10 +154,11 @@ export async function GET(req: Request) {
   const lng = Number(searchParams.get("lng"));
   const dong = searchParams.get("dong") ?? "";
   const job = searchParams.get("job");
+  const radius = Math.min(10000, Math.max(1000, Number(searchParams.get("radius") ?? "3000") || 3000));
   if (!isFinite(lat) || !isFinite(lng)) return Response.json({ ok: false, reason: "bad-coords" });
 
   try {
-    const items = job ? await jobPlaces(key, job, lat, lng, dong) : await townPlaces(key, lat, lng, dong);
+    const items = job ? await jobPlaces(key, job, lat, lng, dong) : await townPlaces(key, lat, lng, dong, radius);
     return Response.json({ ok: true, count: items.length, items });
   } catch {
     return Response.json({ ok: false, reason: "fetch-fail" });

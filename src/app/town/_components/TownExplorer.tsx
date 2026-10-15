@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
-import { fetchRealFacilities, loadCached, saveCached, dirWord, distM, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
+import { fetchRealFacilities, fetchMorePlaces, loadCached, saveCached, dirWord, distM, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
 
@@ -42,6 +43,13 @@ function initPlaces(): { list: TownFacility[]; real: boolean; profile: MeProfile
 }
 
 export default function TownExplorer() {
+  const searchParams = useSearchParams();
+  const focus = {
+    lat: Number(searchParams.get("lat")),
+    lng: Number(searchParams.get("lng")),
+    name: searchParams.get("name") ?? "",
+  };
+  const hasFocus = isFinite(focus.lat) && isFinite(focus.lng) && focus.name !== "";
   const [init] = useState(initPlaces);
   const me = init.profile;
   const [places, setPlaces] = useState<TownFacility[]>(init.list);
@@ -87,10 +95,40 @@ export default function TownExplorer() {
     runSearch();
   }
 
+  function moreSecrets() {
+    if (!me || loadingMore) return;
+    setLoadingMore(true);
+    setMoreEmpty(false);
+    setSearching(true);
+    setSteps([]);
+    const exclude = [...places.map((p) => p.id), ...found];
+    fetchMorePlaces(me.lat, me.lng, me.dong, exclude, (s) =>
+      setSteps((prev) => [...prev.filter((p) => p.source !== s.source), s])
+    )
+      .then((r) => {
+        if (r && r.length > 0) {
+          const next = [...places, ...r];
+          setPlaces(next);
+          setDebug((d) => (d ? { ...d } : d));
+          saveCached(me.lat, me.lng, next);
+          speak(`새 비밀 ${r.length}개 추가!`);
+        } else {
+          setMoreEmpty(true);
+        }
+      })
+      .catch(() => setMoreEmpty(true))
+      .finally(() => {
+        setSearching(false);
+        setLoadingMore(false);
+      });
+  }
+
   const [found, setFound] = useState<string[]>(loadStamps);
   const [listMode, setListMode] = useState(false);
   const [cheer, setCheer] = useState<string | null>(null);
   const [travel, setTravel] = useState<TownFacility | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreEmpty, setMoreEmpty] = useState(false);
 
   // 내 동네면 진짜 장소로 교체 (캐시 우선, miss면 네트워크)
   useEffect(() => {
@@ -190,6 +228,15 @@ export default function TownExplorer() {
           >
             🎒 수집함에서 기록표 인쇄하기
           </Link>
+          <button
+            type="button"
+            onClick={moreSecrets}
+            disabled={searching || loadingMore}
+            className="mt-2 w-full rounded-2xl bg-emerald-400 px-4 py-3 text-xl font-black shadow disabled:opacity-50"
+          >
+            {loadingMore ? "🔍 더 넓게 찾는 중..." : "🆕 새 비밀 찾기! (더 넓게)"}
+          </button>
+          {moreEmpty && <p className="mt-2 font-black">주변을 다 뒤졌어! 너 진짜 대단하다! 🎉</p>}
         </div>
       )}
 
@@ -246,7 +293,13 @@ export default function TownExplorer() {
           center={center}
           expedition={travel ? { lat: travel.lat, lng: travel.lng, id: travel.id } : null}
           onArrive={onArrive}
+          focus={hasFocus ? focus : null}
         />
+      )}
+      {hasFocus && (
+        <p className="animate-pop rounded-2xl bg-violet-200 p-4 text-center text-xl font-black">
+          ⭐ {focus.name} 여기야! 핀을 눌러 탐험해봐!
+        </p>
       )}
       {travel && (
         <p className="animate-floaty rounded-2xl bg-sky-200 p-4 text-center text-xl font-black">

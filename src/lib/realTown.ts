@@ -159,22 +159,22 @@ const CAP: Record<TownFacility["kind"], number> = {
   주의길: 0,
 };
 
-function applyCaps(lat: number, lng: number, items: TownFacility[]): TownFacility[] {
+function applyCaps(lat: number, lng: number, items: TownFacility[], mult = 1): TownFacility[] {
   const out: TownFacility[] = [];
   for (const kind of ["도서관", "공원", "학교", "빵집", "병원", "안전지킴이집"] as const) {
     out.push(
       ...items
         .filter((i) => i.kind === kind)
         .sort((a, b) => distM(lat, lng, a.lat, a.lng) - distM(lat, lng, b.lat, b.lng))
-        .slice(0, CAP[kind])
+        .slice(0, CAP[kind] * mult)
     );
   }
   return out;
 }
 
-async function viaOverpass(lat: number, lng: number, dong: string): Promise<TownFacility[]> {
-  // 한 번에 3.5km 조회 (반경 나눠서 여러 번 물으면 느려서 멈춘 것처럼 보임)
-  const r = 3500;
+async function viaOverpass(lat: number, lng: number, dong: string, radius = 3500): Promise<TownFacility[]> {
+  // 한 번에 조회 (반경 나눠서 여러 번 물으면 느려서 멈춘 것처럼 보임)
+  const r = radius;
   const q = `
 [out:json][timeout:25];
 (
@@ -230,7 +230,7 @@ interface NominatimEl {
   display_name: string;
 }
 
-async function viaNominatim(lat: number, lng: number, dong: string): Promise<TownFacility[]> {
+async function viaNominatim(lat: number, lng: number, dong: string, boxD = 0.027): Promise<TownFacility[]> {
   // 이름 없는 점(빵집이 그냥 "빵집"으로 등록된 경우)은 애들 눈에 가짜처럼 보여서 제외
   const GENERIC = new Set(["도서관", "공원", "학교", "빵집", "병원", "약국", "소방서", "경찰서", "편의점", "놀이터"]);
   const kinds: Array<[string, TownFacility["kind"], string]> = [
@@ -279,7 +279,7 @@ async function viaNominatim(lat: number, lng: number, dong: string): Promise<Tow
     })
   );
   // 동 이름과 상관없이 내 주변 박스에서 한 번 더 (옆 동네 경계에 걸린 곳도 잡힘)
-  const d = 0.027;
+  const d = boxD;
   const vb = `${lng - d},${lat + d},${lng + d},${lat - d}`;
   await Promise.all(
     kinds.map(async ([kw, kind, stamp]) => {
@@ -357,6 +357,8 @@ export interface JobPlace {
   id: string;
   name: string;
   easy: string;
+  lat: number;
+  lng: number;
 }
 
 const JOB_FILTER: Record<string, string> = {
@@ -415,6 +417,8 @@ export async function fetchPlacesForJob(
         id: `osm-${el.type}-${el.id}`,
         name,
         easy: `${walkText(distM(lat, lng, plat, plng))} 걸려!`,
+        lat: plat,
+        lng: plng,
       });
       if (out.length >= 5) break;
     }
@@ -422,6 +426,51 @@ export async function fetchPlacesForJob(
   } catch {
     return null;
   }
+}
+
+// 다 찾은 뒤 새 비밀 추가: 더 넓게 + 이미 찾은 곳 제외
+export async function fetchMorePlaces(
+  lat: number,
+  lng: number,
+  dong: string,
+  exclude: string[],
+  onStep?: (s: ProgressStep) => void
+): Promise<TownFacility[] | null> {
+  const wrap = async (source: ProgressStep["source"], p: Promise<TownFacility[]>) => {
+    try {
+      const r = await p;
+      onStep?.({ source, count: r.length });
+      return r;
+    } catch {
+      onStep?.({ source, count: -1 });
+      return [];
+    }
+  };
+  const kakaoWide = (async () => {
+    try {
+      const res = await fetchTimeout(`/api/places/kakao?lat=${lat}&lng=${lng}&dong=${encodeURIComponent(dong)}&radius=8000`, {}, 25000);
+      if (!res.ok) return [];
+      const j = (await res.json()) as { ok: boolean; items?: TownFacility[] };
+      if (!j.ok || !Array.isArray(j.items)) return [];
+      return j.items.map((i) => ({ ...i, dong, safeLevel: "초록" as const }));
+    } catch {
+      return [];
+    }
+  })();
+  const [kak, over, nom] = await Promise.all([
+    wrap("kakao", kakaoWide),
+    wrap("overpass", viaOverpass(lat, lng, dong, 8000)),
+    wrap("nominatim", viaNominatim(lat, lng, dong, 0.06)),
+  ]);
+  const have = new Set(exclude);
+  const merged = new Map<string, TownFacility>();
+  for (const f of [...kak, ...over, ...nom]) {
+    const key = `${f.kind}:${f.name}`;
+    if (have.has(f.id) || merged.has(key)) continue;
+    merged.set(key, f);
+  }
+  if (merged.size === 0) return null;
+  return applyCaps(lat, lng, [...merged.values()], 2);
 }
 
 export function loadCached(lat: number, lng: number): TownFacility[] | null {

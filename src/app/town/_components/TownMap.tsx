@@ -12,16 +12,17 @@ interface Props {
   center: { lat: number; lng: number; dong: string };
   expedition: { lat: number; lng: number; id: string } | null;
   onArrive: (id: string) => void;
+  focus: { lat: number; lng: number; name: string } | null;
 }
 
-export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive }: Props) {
+export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focus }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Record<string, Marker>>({});
-  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive });
+  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive, focus });
 
   useEffect(() => {
-    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive };
+    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focus };
   });
 
   useEffect(() => {
@@ -202,6 +203,32 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       done = true;
     };
   }, [expId]);
+
+  // 직업 도감에서 넘어온 장소: 별 마커 + 확대 + 팝업
+  const focusKey = focus ? `${focus.lat},${focus.lng},${focus.name}` : "";
+  useEffect(() => {
+    if (!focusKey) return;
+    async function show() {
+      const L = (await import("leaflet")).default;
+      const map = mapRef.current;
+      if (!map) {
+        setTimeout(show, 500);
+        return;
+      }
+      const f = stateRef.current.focus;
+      if (!f) return;
+      map.flyTo([f.lat, f.lng], 17, { duration: 1 });
+      L.marker([f.lat, f.lng], {
+        icon: L.divIcon({ className: "", html: `<div style="font-size:40px">⭐</div>`, iconSize: [46, 46], iconAnchor: [23, 23] }),
+        zIndexOffset: 900,
+      })
+        .addTo(map)
+        .bindPopup(`<b>⭐ ${f.name}</b><br/>직업 도감에서 왔어!`)
+        .openPopup();
+    }
+    show();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusKey]);
 
   return (
     <div>

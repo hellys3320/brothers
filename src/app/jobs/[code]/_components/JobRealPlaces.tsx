@@ -67,13 +67,19 @@ export default function JobRealPlaces({ jobCode, jobName }: { jobCode: string; j
             <li key={s.id} className="animate-pop rounded-2xl bg-emerald-50 px-4 py-3">
               <p className="text-xl font-black">{s.name}</p>
               <p className="font-bold text-stone-600">{s.easy}</p>
+              <Link
+                href={`/town?lat=${s.lat}&lng=${s.lng}&name=${encodeURIComponent(s.name)}`}
+                className="mt-2 block rounded-2xl bg-emerald-300 px-4 py-2 text-center font-black"
+              >
+                🗺️ 지도에서 보기
+              </Link>
             </li>
           ))}
         </ul>
       )}
       <div className="mt-3 flex gap-2">
         <Link href="/town" className="flex-1 rounded-2xl bg-emerald-300 px-4 py-3 text-center text-lg font-black">
-          지도에서 보기
+          동네 탐험하기
         </Link>
         <Link href="/quiz" className="flex-1 rounded-2xl bg-yellow-200 px-4 py-3 text-center text-lg font-black">
           퀴즈 풀기
