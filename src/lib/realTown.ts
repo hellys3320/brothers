@@ -10,7 +10,22 @@ const OVERPASS_URLS = [
   "https://overpass.kumi.systems/api/interpreter",
 ];
 
-export type RealSource = "overpass" | "nominatim";
+export type RealSource = "overpass" | "seoul" | "nominatim";
+
+async function fetchViaSeoul(lat: number, lng: number, dong: string): Promise<TownFacility[]> {
+  try {
+    const res = await fetch(`/api/places/seoul?lat=${lat}&lng=${lng}`);
+    if (!res.ok) return [];
+    const j = (await res.json()) as {
+      ok: boolean;
+      items?: Array<{ id: string; name: string; kind: TownFacility["kind"]; stamp: string; easy: string; lat: number; lng: number }>;
+    };
+    if (!j.ok || !Array.isArray(j.items)) return [];
+    return j.items.map((i) => ({ ...i, dong, safeLevel: "초록" as const }));
+  } catch {
+    return [];
+  }
+}
 
 async function fetchOverpass(q: string): Promise<Response | null> {
   for (const url of OVERPASS_URLS) {
@@ -259,16 +274,20 @@ export async function fetchRealFacilities(
   lng: number,
   dong: string
 ): Promise<{ items: TownFacility[]; via: RealSource } | null> {
-  const [over, nom] = await Promise.all([viaOverpass(lat, lng, dong), viaNominatim(lat, lng, dong)]);
+  const [over, nom, seo] = await Promise.all([
+    viaOverpass(lat, lng, dong),
+    viaNominatim(lat, lng, dong),
+    fetchViaSeoul(lat, lng, dong),
+  ]);
   const merged = new Map<string, TownFacility>();
-  for (const f of [...over, ...nom]) {
+  for (const f of [...seo, ...over, ...nom]) {
     const key = `${f.kind}:${f.name}`;
     if (!merged.has(key)) merged.set(key, f);
   }
   if (merged.size === 0) return null;
   return {
     items: applyCaps(lat, lng, [...merged.values()]),
-    via: over.length > 0 ? "overpass" : "nominatim",
+    via: over.length > 0 ? "overpass" : seo.length > 0 ? "seoul" : "nominatim",
   };
 }
 

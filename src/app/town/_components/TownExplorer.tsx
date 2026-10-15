@@ -128,7 +128,7 @@ export default function TownExplorer() {
           찾은 비밀 {gotCount} / {places.length}개 🎉
           {realMode ? (
             <span className="ml-2 text-base text-emerald-700">
-              {realMode === "overpass" ? "진짜 장소!" : "진짜 장소(간이)!"}
+              {realMode === "nominatim" ? "진짜 장소(간이)!" : "진짜 장소!"}
             </span>
           ) : (
             <span className="ml-2 text-base text-stone-400">연습 장소</span>
