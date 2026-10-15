@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MOCK_QUIZ } from "@/lib/mock";
 import { speak } from "@/lib/speak";
+import { addXP } from "@/lib/xp";
 
 function loadBest(): number {
   if (typeof window === "undefined") return 0;
@@ -45,6 +46,8 @@ export default function QuizRunner() {
         localStorage.setItem("brothers-quiz-best", String(nb));
         setBest(nb);
       } catch {}
+      addXP(s * 5);
+      speak(`끝! ${s}개 맞혔어! ${s * 5} XP 받았다!`);
     } else {
       setIdx(idx + 1);
     }

@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { loadMyPlaces } from "@/lib/realTown";
+import { getXP, levelFor } from "@/lib/xp";
+import { MOCK_JOBS } from "@/lib/mock";
+import type { Dream } from "@/app/jobs/dream/_components/DreamMaker";
 import { speak } from "@/lib/speak";
 
 const MOODS = ["😄", "😮", "😤", "🥱", "🤩"];
@@ -32,6 +35,16 @@ export default function MyBoxClient() {
   const [saved, setSaved] = useState<string>(() => read("brothers-diary", ""));
   const [mood, setMood] = useState<string>(() => read("brothers-mood", MOODS[0]));
   const [best] = useState<number>(() => Number(read("brothers-quiz-best", "0")));
+  const [xp] = useState(() => getXP());
+  const [dream] = useState<Dream | null>(() => {
+    try {
+      const raw = localStorage.getItem("brothers-dream");
+      return raw ? (JSON.parse(raw) as Dream) : null;
+    } catch {
+      return null;
+    }
+  });
+  const dreamJob = dream ? MOCK_JOBS.find((j) => j.code === dream.code) : null;
 
   function saveDiary() {
     if (!diary.trim() && !saved) return;
@@ -70,7 +83,19 @@ export default function MyBoxClient() {
           <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${progress}%` }} />
         </div>
         <p className="mt-2 font-bold">퀴즈 최고 기록: {best}개 · 스탬프 {found.length}개</p>
+        <p className="font-black text-violet-700">🎖️ Lv.{levelFor(xp).lv} {levelFor(xp).name} ({xp} XP)</p>
       </div>
+
+      {dream && dreamJob && (
+        <div className="rounded-3xl bg-gradient-to-r from-violet-200 to-pink-200 p-5 text-center shadow">
+          <p className="text-4xl">{dreamJob.emoji}</p>
+          <p className="text-2xl font-black">20년 뒤의 {dreamJob.name}</p>
+          <p className="font-bold">“{dream.msg}”</p>
+          <Link href="/jobs/dream" className="mt-2 block rounded-2xl bg-white px-4 py-2 font-black">
+            꿈 바꾸기
+          </Link>
+        </div>
+      )}
 
       <div className="rounded-3xl bg-white p-5 shadow">
         <h2 className="text-2xl font-black">🎒 스탬프북 ({found.length}개)</h2>

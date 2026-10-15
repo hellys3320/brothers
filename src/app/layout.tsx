@@ -23,6 +23,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link className="rounded-2xl bg-white px-4 py-2 shadow" href="/jobs">
                 직업도감
               </Link>
+              <Link className="rounded-2xl bg-white px-4 py-2 shadow" href="/games">
+                게임
+              </Link>
               <Link className="rounded-2xl bg-white px-4 py-2 shadow" href="/quiz">
                 퀴즈
               </Link>

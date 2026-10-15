@@ -4,6 +4,7 @@ import { MOCK_JOBS } from "@/lib/mock";
 import HyungnimTalk from "@/components/HyungnimTalk";
 import JobRealPlaces from "./_components/JobRealPlaces";
 import VisitRecorder from "./_components/VisitRecorder";
+import JobExtra from "./_components/JobExtra";
 
 export function generateStaticParams() {
   return MOCK_JOBS.map((j) => ({ code: j.code }));
@@ -51,6 +52,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ code
         ))}
       </div>
       <JobRealPlaces jobCode={code} jobName={job.name} />
+      <JobExtra code={code} name={job.name} spot={job.spot} field={job.field} rarity={job.rarity} />
     </div>
   );
 }
