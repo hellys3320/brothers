@@ -1,46 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
-import { MOCK_TOWN } from "@/lib/mock";
-import { loadMe } from "@/lib/me";
+import type { TownFacility } from "@/lib/mock";
 import "leaflet/dist/leaflet.css";
 
 interface Props {
   found: string[];
   onDiscover: (id: string) => void;
+  facilities: TownFacility[];
+  center: { lat: number; lng: number; dong: string };
 }
 
-// 비밀 5곳을 동네 중심 주변에 배치 (도보 탐험 느낌)
-const OFFS: Record<string, [number, number]> = {
-  "lib-1": [0.001, 0],
-  "park-1": [-0.001, 0.002],
-  "hosp-1": [0, -0.002],
-  "safe-1": [0.0005, 0.001],
-  "road-1": [-0.0013, -0.001],
-};
-
-function homeBase() {
-  if (typeof window === "undefined") return { lat: 37.5668, lng: 126.9785, dong: "햇살동" };
-  const me = loadMe();
-  if (me) return { lat: me.lat, lng: me.lng, dong: me.dong };
-  return { lat: 37.5668, lng: 126.9785, dong: "햇살동" };
-}
-
-export default function TownMap({ found, onDiscover }: Props) {
+export default function TownMap({ found, onDiscover, facilities, center }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Record<string, Marker>>({});
-  const [base] = useState(homeBase);
-  const foundRef = useRef(found);
-  const cbRef = useRef(onDiscover);
+  const stateRef = useRef({ found, onDiscover, facilities, center });
 
   useEffect(() => {
-    foundRef.current = found;
-  }, [found]);
-  useEffect(() => {
-    cbRef.current = onDiscover;
-  }, [onDiscover]);
+    stateRef.current = { found, onDiscover, facilities, center };
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -48,8 +28,9 @@ export default function TownMap({ found, onDiscover }: Props) {
     async function init() {
       const L = (await import("leaflet")).default;
       if (cancelled || !divRef.current || mapRef.current) return;
+      const { facilities: facs, center: c, found: f0 } = stateRef.current;
 
-      const map = L.map(divRef.current).setView([base.lat, base.lng], 15);
+      const map = L.map(divRef.current).setView([c.lat, c.lng], 15);
       mapRef.current = map;
 
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -57,7 +38,7 @@ export default function TownMap({ found, onDiscover }: Props) {
         attribution: "&copy; OpenStreetMap",
       }).addTo(map);
 
-      L.marker([base.lat, base.lng], {
+      L.marker([c.lat, c.lng], {
         icon: L.divIcon({
           className: "",
           html: `<div style="font-size:36px">🏠</div>`,
@@ -66,19 +47,19 @@ export default function TownMap({ found, onDiscover }: Props) {
         }),
       })
         .addTo(map)
-        .bindPopup(`<b>우리집( ${base.dong} )</b><br/>여기서 출발!`);
+        .bindPopup(`<b>우리집( ${c.dong} )</b><br/>여기서 출발!`);
 
-      for (const f of MOCK_TOWN) {
-        const [dlat, dlng] = OFFS[f.id] ?? [0, 0];
-        const icon = L.divIcon({
-          className: "",
-          html: `<div style="font-size:32px;${foundRef.current.includes(f.id) ? "" : "filter:grayscale(1);opacity:.6"}">${f.stamp}</div>`,
-          iconSize: [40, 40],
-          iconAnchor: [20, 20],
-        });
-        const m = L.marker([base.lat + dlat, base.lng + dlng], { icon }).addTo(map);
-        m.bindPopup(`<b>${f.name}</b><br/>${f.easy}<br/>안전: ${f.safeLevel}`);
-        m.on("click", () => cbRef.current(f.id));
+      for (const f of facs) {
+        const m = L.marker([f.lat, f.lng], {
+          icon: L.divIcon({
+            className: "",
+            html: `<div style="font-size:32px;${f0.includes(f.id) ? "" : "filter:grayscale(1);opacity:.6"}">${f.stamp}</div>`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20],
+          }),
+        }).addTo(map);
+        m.bindPopup(`<b>${f.name}</b><br/>${f.easy}`);
+        m.on("click", () => stateRef.current.onDiscover(f.id));
         markersRef.current[f.id] = m;
       }
     }
@@ -87,13 +68,40 @@ export default function TownMap({ found, onDiscover }: Props) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 핀 목록이 바뀌면(진짜 장소 도착) 마커 다시 그림
+  const facKey = facilities.map((f) => f.id).join(",");
+  useEffect(() => {
+    async function rebuild() {
+      const L = (await import("leaflet")).default;
+      const map = mapRef.current;
+      if (!map) return;
+      for (const id of Object.keys(markersRef.current)) {
+        markersRef.current[id]?.remove();
+      }
+      markersRef.current = {};
+      for (const f of stateRef.current.facilities) {
+        const m = L.marker([f.lat, f.lng], {
+          icon: L.divIcon({
+            className: "",
+            html: `<div style="font-size:32px;${stateRef.current.found.includes(f.id) ? "" : "filter:grayscale(1);opacity:.6"}">${f.stamp}</div>`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20],
+          }),
+        }).addTo(map);
+        m.bindPopup(`<b>${f.name}</b><br/>${f.easy}`);
+        m.on("click", () => stateRef.current.onDiscover(f.id));
+        markersRef.current[f.id] = m;
+      }
+    }
+    rebuild();
+  }, [facKey]);
 
   useEffect(() => {
     async function refresh() {
       const L = (await import("leaflet")).default;
-      for (const f of MOCK_TOWN) {
+      for (const f of stateRef.current.facilities) {
         const m = markersRef.current[f.id];
         if (!m) continue;
         m.setIcon(
@@ -111,8 +119,8 @@ export default function TownMap({ found, onDiscover }: Props) {
 
   return (
     <div>
-      <div ref={divRef} className="h-[340px] w-full rounded-3xl border-4 border-white shadow" role="application" aria-label={`${base.dong} 비밀지도`} />
-      <p className="mt-2 text-sm font-bold text-stone-500">📍 {base.dong} 중심! 🏠에서 출발해 핀을 눌러봐. 위치추적은 안 해요.</p>
+      <div ref={divRef} className="h-[340px] w-full rounded-3xl border-4 border-white shadow" role="application" aria-label={`${center.dong} 비밀지도`} />
+      <p className="mt-2 text-sm font-bold text-stone-500">📍 {center.dong} 중심! 🏠에서 출발해 핀을 눌러봐. 위치추적은 안 해요.</p>
     </div>
   );
 }

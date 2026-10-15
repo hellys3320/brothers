@@ -26,7 +26,7 @@ export default function TownPage() {
         </ul>
       </div>
       <p className="rounded-2xl bg-white p-4 text-sm font-bold text-stone-500">
-        우리동네 도서관·공원·가게 이야기와 안전한 길 이야기를 쉽게 바꾼 연습판이에요.
+        진짜 도서관·공원·병원은 지도(OpenStreetMap)에서 가져와요. 못 가져오면 연습 장소가 나와요.
       </p>
     </div>
   );
