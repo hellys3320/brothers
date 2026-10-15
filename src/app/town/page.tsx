@@ -8,7 +8,7 @@ export default function TownPage() {
   return (
     <div className="flex flex-col gap-5">
       <h1 className="text-3xl font-black">🗺️ 우리동네 비밀지도</h1>
-      <HyungnimTalk text="네 동네 중심에 비밀들을 숨겼어! 🏠에서 출발해 핀을 눌러봐!" />
+      <HyungnimTalk text="핀을 눌러 스탬프를 모아봐! 다 모으면 동네박사가 되고 기록표를 인쇄할 수 있어!" />
       <TownExplorer />
       <div className="rounded-3xl bg-white p-5 shadow">
         <h2 className="text-2xl font-black">💼 동네에서 직업 찾기</h2>

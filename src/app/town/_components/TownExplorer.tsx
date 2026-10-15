@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
 import { fetchRealFacilities, loadCached, saveCached, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
 import { loadMe, type MeProfile } from "@/lib/me";
@@ -128,12 +129,12 @@ export default function TownExplorer() {
     try {
       localStorage.setItem("brothers-stamps", JSON.stringify(next));
     } catch {}
-    speak(`${f.name}. ${f.easy} 스탬프를 받았다!`);
-    setCheer(`${f.stamp} 찾았다!`);
-    setTimeout(() => setCheer(null), 1500);
+    speak(`${f.name}. ${f.easy} 스탬프를 받았다! 수집함에 저장됐다!`);
     const gotNow = next.filter((n) => places.some((p) => p.id === n)).length;
+    setCheer(`${f.stamp} ${f.name} 찾았다! (${gotNow}/${places.length})`);
+    setTimeout(() => setCheer(null), 2200);
     if (gotNow >= places.length) {
-      setTimeout(() => speak("우와! 비밀을 다 찾았어! 너는 진짜 동네박사야!"), 1600);
+      setTimeout(() => speak("우와! 비밀을 다 찾았어! 너는 진짜 동네박사야! 수집함에서 기록표를 인쇄해봐!"), 2300);
     }
   }
 
@@ -164,7 +165,19 @@ export default function TownExplorer() {
             style={{ width: `${places.length ? (gotCount / places.length) * 100 : 0}%` }}
           />
         </div>
+        <p className="mt-1 text-sm font-bold text-stone-500">핀을 누르면 스탬프가 수집함에 저장돼!</p>
       </div>
+      {places.length > 0 && gotCount >= places.length && (
+        <div className="animate-pop rounded-3xl bg-gradient-to-r from-amber-300 to-pink-300 p-5 text-center shadow-lg">
+          <p className="text-3xl font-black">🏆 다 찾았다! {center.dong} 박사!</p>
+          <Link
+            href="/mybox"
+            className="mt-2 block rounded-2xl bg-white px-4 py-3 text-xl font-black shadow"
+          >
+            🎒 수집함에서 기록표 인쇄하기
+          </Link>
+        </div>
+      )}
 
       <div className="flex items-center justify-end gap-2">
         <button
