@@ -4,6 +4,27 @@ import type { TownFacility } from "./mock";
 
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 
+const OVERPASS_URLS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+];
+
+async function fetchOverpass(q: string): Promise<Response | null> {
+  for (const url of OVERPASS_URLS) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "data=" + encodeURIComponent(q),
+      });
+      if (res.ok) return res;
+    } catch {
+      // 다음 미러로
+    }
+  }
+  return null;
+}
+
 function cacheKey(lat: number, lng: number) {
   return `brothers-poi-${lat.toFixed(3)}-${lng.toFixed(3)}`;
 }
@@ -71,12 +92,8 @@ export async function fetchRealFacilities(lat: number, lng: number, dong: string
 );
 out center 60;`.trim();
 
-  const res = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: "data=" + encodeURIComponent(q),
-  });
-  if (!res.ok) return null;
+  const res = await fetchOverpass(q);
+  if (!res) return null;
   const json = (await res.json()) as { elements?: OverpassEl[] };
   const els = json.elements ?? [];
 
