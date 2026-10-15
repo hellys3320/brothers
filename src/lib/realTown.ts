@@ -29,7 +29,7 @@ async function fetchOverpass(q: string): Promise<Response | null> {
 }
 
 function cacheKey(lat: number, lng: number) {
-  return `brothers-poi-v2-${lat.toFixed(3)}-${lng.toFixed(3)}`;
+  return `brothers-poi-v3-${lat.toFixed(3)}-${lng.toFixed(3)}`;
 }
 
 function distM(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -180,6 +180,8 @@ interface NominatimEl {
 }
 
 async function viaNominatim(lat: number, lng: number, dong: string): Promise<TownFacility[]> {
+  // 이름 없는 점(빵집이 그냥 "빵집"으로 등록된 경우)은 애들 눈에 가짜처럼 보여서 제외
+  const GENERIC = new Set(["도서관", "공원", "학교", "빵집", "병원", "약국", "소방서", "경찰서", "편의점", "놀이터"]);
   const kinds: Array<[string, TownFacility["kind"], string]> = [
     ["도서관", "도서관", "📚"],
     ["공원", "공원", "🌳"],
@@ -190,6 +192,21 @@ async function viaNominatim(lat: number, lng: number, dong: string): Promise<Tow
     ["경찰서", "안전지킴이집", "🛟"],
   ];
   const out: TownFacility[] = [];
+  const push = (nm: string, kind: TownFacility["kind"], stamp: string, plat: number, plng: number): boolean => {
+    if (!nm || GENERIC.has(nm) || out.some((o) => o.name === nm)) return false;
+    out.push({
+      id: `nom-${kind}-${nm}-${plat.toFixed(4)}`,
+      name: nm,
+      kind,
+      dong,
+      easy: `지도에서 찾은 진짜 ${kind}! ${walkText(distM(lat, lng, plat, plng))}`,
+      stamp,
+      safeLevel: "초록",
+      lat: plat,
+      lng: plng,
+    });
+    return true;
+  };
   await Promise.all(
     kinds.map(async ([kw, kind, stamp]) => {
       try {
@@ -202,22 +219,32 @@ async function viaNominatim(lat: number, lng: number, dong: string): Promise<Tow
         let took = 0;
         for (const a of arr) {
           if (took >= 2) break;
-          const nm = a.name ?? a.display_name.split(",")[0];
-          if (!nm || out.some((o) => o.name === nm)) continue;
+          if (push(a.name ?? a.display_name.split(",")[0], kind, stamp, Number(a.lat), Number(a.lon))) took++;
+        }
+      } catch {
+        // 이 종류는 건너뜀
+      }
+    })
+  );
+  // 동 이름과 상관없이 내 주변 박스에서 한 번 더 (옆 동네 경계에 걸린 곳도 잡힘)
+  const d = 0.027;
+  const vb = `${lng - d},${lat + d},${lng + d},${lat - d}`;
+  await Promise.all(
+    kinds.map(async ([kw, kind, stamp]) => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&countrycodes=kr&limit=8&bounded=1&viewbox=${vb}&q=${encodeURIComponent(kw)}`,
+          { headers: { Accept: "application/json" } }
+        );
+        if (!res.ok) return;
+        const arr = (await res.json()) as NominatimEl[];
+        let took = 0;
+        for (const a of arr) {
+          if (took >= 2) break;
           const plat = Number(a.lat);
           const plng = Number(a.lon);
-          out.push({
-            id: `nom-${a.place_id}`,
-            name: nm,
-            kind,
-            dong,
-            easy: `지도에서 찾은 진짜 ${kind}! ${walkText(distM(lat, lng, plat, plng))}`,
-            stamp,
-            safeLevel: "초록",
-            lat: plat,
-            lng: plng,
-          });
-          took++;
+          if (distM(lat, lng, plat, plng) > 5000) continue;
+          if (push(a.name ?? a.display_name.split(",")[0], kind, stamp, plat, plng)) took++;
         }
       } catch {
         // 이 종류는 건너뜀
