@@ -10,16 +10,18 @@ interface Props {
   onDiscover: (id: string) => void;
   facilities: TownFacility[];
   center: { lat: number; lng: number; dong: string };
+  expedition: { lat: number; lng: number; id: string } | null;
+  onArrive: (id: string) => void;
 }
 
-export default function TownMap({ found, onDiscover, facilities, center }: Props) {
+export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Record<string, Marker>>({});
-  const stateRef = useRef({ found, onDiscover, facilities, center });
+  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive });
 
   useEffect(() => {
-    stateRef.current = { found, onDiscover, facilities, center };
+    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive };
   });
 
   useEffect(() => {
@@ -116,6 +118,57 @@ export default function TownMap({ found, onDiscover, facilities, center }: Props
     }
     refresh();
   }, [found]);
+
+  // 탐험 출발: 형님이 🏠에서 핀까지 걸어감
+  const expId = expedition?.id ?? null;
+  useEffect(() => {
+    if (!expId) return;
+    const id: string = expId;
+    let raf = 0;
+    let done = false;
+    async function walk() {
+      const L = (await import("leaflet")).default;
+      const map = mapRef.current;
+      const st = stateRef.current;
+      const target = st.facilities.find((f) => f.id === id);
+      if (!map || !target) {
+        st.onArrive(id);
+        return;
+      }
+      const from = st.center;
+      const line = L.polyline(
+        [
+          [from.lat, from.lng],
+          [target.lat, target.lng],
+        ],
+        { dashArray: "8 8", color: "#f59e0b", weight: 4 }
+      ).addTo(map);
+      const me = L.marker([from.lat, from.lng], {
+        icon: L.divIcon({ className: "", html: `<div style="font-size:38px">🕵️</div>`, iconSize: [44, 44], iconAnchor: [22, 22] }),
+        zIndexOffset: 1000,
+      }).addTo(map);
+      const t0 = performance.now();
+      const dur = 3200;
+      const step = (t: number) => {
+        const k = Math.min(1, (t - t0) / dur);
+        me.setLatLng([from.lat + (target.lat - from.lat) * k, from.lng + (target.lng - from.lng) * k]);
+        if (k < 1) {
+          raf = requestAnimationFrame(step);
+        } else if (!done) {
+          done = true;
+          me.remove();
+          line.remove();
+          stateRef.current.onArrive(id);
+        }
+      };
+      raf = requestAnimationFrame(step);
+    }
+    walk();
+    return () => {
+      cancelAnimationFrame(raf);
+      done = true;
+    };
+  }, [expId]);
 
   return (
     <div>

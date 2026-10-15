@@ -63,7 +63,7 @@ export default function QuizRunner() {
         <h2 className="text-3xl font-black">
           끝! {MOCK_QUIZ.length}개 중 {score}개 맞혔어!
         </h2>
-        <p className="mt-2 text-xl font-bold">{score >= 2 ? "칭호: 동네박사!" : "칭호: 탐험견습생!"}</p>
+        <p className="mt-2 text-xl font-bold">{score >= 4 ? "칭호: 동네박사!" : score >= 2 ? "칭호: 탐험대원!" : "칭호: 탐험견습생!"}</p>
         <p className="mt-1 font-bold text-stone-500">역대 최고: {Math.max(best, score)}개</p>
         <div className="mt-4 flex gap-2">
           <button type="button" onClick={retry} className="flex-1 rounded-2xl bg-amber-400 px-6 py-3 text-xl font-black">

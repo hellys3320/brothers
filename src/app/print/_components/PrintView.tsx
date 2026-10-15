@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MOCK_TOWN, MOCK_QUIZ } from "@/lib/mock";
+import { MOCK_QUIZ } from "@/lib/mock";
+import { loadMyPlaces } from "@/lib/realTown";
+import { loadMe } from "@/lib/me";
 
 function read(key: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
@@ -27,6 +29,8 @@ function todayStr(): string {
 
 export default function PrintView() {
   const [stamps] = useState<string[]>(readStamps);
+  const [myPlaces] = useState(loadMyPlaces);
+  const [meDong] = useState(() => loadMe()?.dong ?? "우리동네");
   const [diary] = useState<string>(() => read("brothers-diary", ""));
   const [mood] = useState<string>(() => read("brothers-mood", "😄"));
   const [best] = useState<number>(() => Number(read("brothers-quiz-best", "0")));
@@ -38,18 +42,18 @@ export default function PrintView() {
     setToday(todayStr());
   }, []);
 
-  const found = MOCK_TOWN.filter((f) => stamps.includes(f.id));
+  const found = stamps.filter((s) => myPlaces.some((p) => p.id === s));
 
   return (
     <div className="flex flex-col gap-4 bg-white p-6">
       <div className="text-center">
         <h1 className="text-3xl font-black">형님의 비밀기지 · 탐험 기록표</h1>
-        <p className="font-bold text-stone-500">{today} · 햇살동 · 로그인 없음 (이 기기에만 저장)</p>
+        <p className="font-bold text-stone-500">{today} · {meDong} · 로그인 없음 (이 기기에만 저장)</p>
       </div>
       <div className="rounded-2xl border-2 border-stone-200 p-4">
-        <h2 className="text-xl font-black">찾은 비밀 {found.length} / {MOCK_TOWN.length}</h2>
+        <h2 className="text-xl font-black">찾은 비밀 {found.length} / {myPlaces.length}</h2>
         <ul className="mt-2">
-          {MOCK_TOWN.map((f) => (
+          {myPlaces.map((f) => (
             <li key={f.id} className="font-bold">
               {stamps.includes(f.id) ? "✅" : "⬜"} {f.stamp} {f.name} - {f.easy}
             </li>
@@ -58,7 +62,7 @@ export default function PrintView() {
       </div>
       <div className="rounded-2xl border-2 border-stone-200 p-4">
         <h2 className="text-xl font-black">퀴즈 {best} / {MOCK_QUIZ.length} (최고 기록)</h2>
-        <p className="font-bold text-stone-500">도장: {best >= 2 ? "동네박사" : "탐험견습생"}</p>
+        <p className="font-bold text-stone-500">도장: {best >= 4 ? "동네박사" : best >= 2 ? "탐험대원" : "탐험견습생"}</p>
       </div>
       <div className="rounded-2xl border-2 border-stone-200 p-4">
         <h2 className="text-xl font-black">탐험일지 {mood}</h2>

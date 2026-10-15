@@ -2,6 +2,7 @@
 // Overpass(구조 검색) + Nominatim(이름 검색)을 합침. 하나라도 있으면 표시.
 // 전부 실패하면 null → 호출 쪽에서 연습 장소로 폴백
 import type { TownFacility } from "./mock";
+import { loadMe } from "./me";
 
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 
@@ -77,7 +78,7 @@ function cacheKey(lat: number, lng: number) {
   return `brothers-poi-v4-${lat.toFixed(3)}-${lng.toFixed(3)}`;
 }
 
-function distM(lat1: number, lng1: number, lat2: number, lng2: number) {
+export function distM(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
@@ -86,8 +87,15 @@ function distM(lat1: number, lng1: number, lat2: number, lng2: number) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-function walkText(meters: number) {
+export function walkText(meters: number) {
   return meters < 150 ? "바로 앞!" : `약 ${Math.round(meters / 100) * 100}m!`;
+}
+
+// 중심에서 보면 어느 쪽인지 (보물찾기 힌트용)
+export function dirWord(lat1: number, lng1: number, lat2: number, lng2: number): string {
+  const dirs = ["북쪽", "북동쪽", "동쪽", "남동쪽", "남쪽", "남서쪽", "서쪽", "북서쪽"];
+  const theta = (Math.atan2((lng2 - lng1) * Math.cos((lat1 * Math.PI) / 180), lat2 - lat1) * 180) / Math.PI;
+  return dirs[Math.round(((theta + 360) % 360) / 45) % 8];
 }
 
 interface OverpassEl {
@@ -433,4 +441,16 @@ export function saveCached(lat: number, lng: number, items: TownFacility[]) {
   try {
     localStorage.setItem(cacheKey(lat, lng), JSON.stringify({ ts: Date.now(), items }));
   } catch {}
+}
+
+// 수집함·기록표용: 내 동네 저장된 장소 (없으면 연습장소)
+export function loadMyPlaces(): TownFacility[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const me = loadMe();
+    if (!me) return [];
+    return loadCached(me.lat, me.lng) ?? [];
+  } catch {
+    return [];
+  }
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MOCK_TOWN } from "@/lib/mock";
+import { loadMyPlaces } from "@/lib/realTown";
 import { speak } from "@/lib/speak";
 
 const MOODS = ["😄", "😮", "😤", "🥱", "🤩"];
@@ -27,7 +27,8 @@ function readStamps(): string[] {
 
 export default function MyBoxClient() {
   const [stamps, setStamps] = useState<string[]>(readStamps);
-  const [diary, setDiary] = useState("");
+  const [myPlaces] = useState(loadMyPlaces);
+  const [diary, setDiary] = useState<string>(() => read("brothers-diary", ""));
   const [saved, setSaved] = useState<string>(() => read("brothers-diary", ""));
   const [mood, setMood] = useState<string>(() => read("brothers-mood", MOODS[0]));
   const [best] = useState<number>(() => Number(read("brothers-quiz-best", "0")));
@@ -54,8 +55,12 @@ export default function MyBoxClient() {
     } catch {}
   }
 
-  const found = MOCK_TOWN.filter((f) => stamps.includes(f.id));
-  const progress = Math.round((found.length / MOCK_TOWN.length) * 100);
+  const found = stamps.map((id) => {
+    const p = myPlaces.find((x) => x.id === id);
+    return p ?? { id, stamp: "🔖", name: "비밀 장소" };
+  });
+  const myGot = stamps.filter((s) => myPlaces.some((p) => p.id === s)).length;
+  const progress = myPlaces.length > 0 ? Math.round((myGot / myPlaces.length) * 100) : 0;
 
   return (
     <div className="flex flex-col gap-5">

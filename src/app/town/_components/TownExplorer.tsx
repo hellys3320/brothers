@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
-import { fetchRealFacilities, loadCached, saveCached, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
+import { fetchRealFacilities, loadCached, saveCached, dirWord, distM, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
 
@@ -90,6 +90,7 @@ export default function TownExplorer() {
   const [found, setFound] = useState<string[]>(loadStamps);
   const [listMode, setListMode] = useState(false);
   const [cheer, setCheer] = useState<string | null>(null);
+  const [travel, setTravel] = useState<TownFacility | null>(null);
 
   // 내 동네면 진짜 장소로 교체 (캐시 우선, miss면 네트워크)
   useEffect(() => {
@@ -123,14 +124,27 @@ export default function TownExplorer() {
 
   function discover(id: string) {
     const f = places.find((x) => x.id === id);
+    if (!f || found.includes(id) || travel) return;
+    // 목록모드면 지도를 켜야 형님이 걸어갈 수 있음
+    if (listMode) setListMode(false);
+    // 바로 도장 대신 형님이 걸어감 (도착하면 onArrive에서 도장)
+    setTravel(f);
+    const meters = Math.round(distM(center.lat, center.lng, f.lat, f.lng));
+    const walk = meters < 150 ? "바로 앞" : `약 ${Math.round(meters / 100) * 100}미터`;
+    speak(`출발! ${dirWord(center.lat, center.lng, f.lat, f.lng)}으로 ${walk}! 따라와!`);
+  }
+
+  function onArrive(id: string) {
+    const f = places.find((x) => x.id === id);
+    setTravel(null);
     if (!f || found.includes(id)) return;
     const next = [...found, id];
     setFound(next);
     try {
       localStorage.setItem("brothers-stamps", JSON.stringify(next));
     } catch {}
-    speak(`${f.name}. ${f.easy} 스탬프를 받았다! 수집함에 저장됐다!`);
     const gotNow = next.filter((n) => places.some((p) => p.id === n)).length;
+    speak(`${f.name} 도착! ${f.easy} 스탬프를 받았다! 수집함에 저장됐다!`);
     setCheer(`${f.stamp} ${f.name} 찾았다! (${gotNow}/${places.length})`);
     setTimeout(() => setCheer(null), 2200);
     if (gotNow >= places.length) {
@@ -224,11 +238,28 @@ export default function TownExplorer() {
         </div>
       )}
 
-      {listMode ? null : <TownMap found={found} onDiscover={discover} facilities={places} center={center} />}
+      {listMode ? null : (
+        <TownMap
+          found={found}
+          onDiscover={discover}
+          facilities={places}
+          center={center}
+          expedition={travel ? { lat: travel.lat, lng: travel.lng, id: travel.id } : null}
+          onArrive={onArrive}
+        />
+      )}
+      {travel && (
+        <p className="animate-floaty rounded-2xl bg-sky-200 p-4 text-center text-xl font-black">
+          🕵️ 형님이 {travel.name}으로 가는 중... 따라와!
+        </p>
+      )}
 
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {places.map((f) => {
           const got = found.includes(f.id);
+          const meters = Math.round(distM(center.lat, center.lng, f.lat, f.lng));
+          const hint = `🧭 ${dirWord(center.lat, center.lng, f.lat, f.lng)}으로 ${meters < 150 ? "바로 앞" : `약 ${Math.round(meters / 100) * 100}m`}!`;
+          const going = travel?.id === f.id;
           return (
             <li
               key={f.id}
@@ -239,12 +270,14 @@ export default function TownExplorer() {
               </span>
               <h3 className="mt-2 text-2xl font-black">{f.name}</h3>
               <p className="font-bold text-stone-700">{f.easy}</p>
+              {!got && <p className="mt-1 font-black text-sky-700">{hint}</p>}
               <button
                 type="button"
                 onClick={() => discover(f.id)}
-                className="mt-3 w-full rounded-2xl bg-emerald-400 px-4 py-3 text-xl font-black shadow active:translate-y-0.5"
+                disabled={got || !!travel}
+                className="mt-3 w-full rounded-2xl bg-emerald-400 px-4 py-3 text-xl font-black shadow active:translate-y-0.5 disabled:opacity-60"
               >
-                {got ? "✅ 찾았다!" : "🔍 탐험하기"}
+                {got ? "✅ 찾았다!" : going ? "🚶 가는 중..." : "🔍 탐험 출발!"}
               </button>
             </li>
           );

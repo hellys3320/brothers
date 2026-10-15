@@ -6,12 +6,13 @@ import { MOCK_JOBS } from "@/lib/mock";
 import { speak } from "@/lib/speak";
 
 export default function JobMatcher() {
+  const [strong, setStrong] = useState(3);
   const [talk, setTalk] = useState(3);
   const [draw, setDraw] = useState(3);
 
   const sorted = [...MOCK_JOBS].sort((a, b) => {
-    const sa = a.powers.말하기 * talk + a.powers.그리기 * draw;
-    const sb = b.powers.말하기 * talk + b.powers.그리기 * draw;
+    const sa = a.powers.힘 * strong + a.powers.말하기 * talk + a.powers.그리기 * draw;
+    const sb = b.powers.힘 * strong + b.powers.말하기 * talk + b.powers.그리기 * draw;
     return sb - sa;
   });
   const top3 = sorted.slice(0, 3);
@@ -25,12 +26,16 @@ export default function JobMatcher() {
       <div className="rounded-3xl bg-white p-5 shadow">
         <h2 className="text-2xl font-black">💫 직업 변신 실험실</h2>
         <label className="mt-3 block text-xl font-bold">
+          힘 레벨: {strong}
+          <input type="range" min={1} max={5} value={strong} onChange={(e) => setStrong(Number(e.target.value))} className="w-full" aria-label="힘 레벨" />
+        </label>
+        <label className="mt-2 block text-xl font-bold">
           말하기 레벨: {talk}
-          <input type="range" min={1} max={5} value={talk} onChange={(e) => setTalk(Number(e.target.value))} className="w-full" />
+          <input type="range" min={1} max={5} value={talk} onChange={(e) => setTalk(Number(e.target.value))} className="w-full" aria-label="말하기 레벨" />
         </label>
         <label className="mt-2 block text-xl font-bold">
           그리기 레벨: {draw}
-          <input type="range" min={1} max={5} value={draw} onChange={(e) => setDraw(Number(e.target.value))} className="w-full" />
+          <input type="range" min={1} max={5} value={draw} onChange={(e) => setDraw(Number(e.target.value))} className="w-full" aria-label="그리기 레벨" />
         </label>
         <button
           type="button"

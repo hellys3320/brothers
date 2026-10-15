@@ -12,11 +12,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko" className="h-full">
       <body className="min-h-full flex flex-col">
         <header className="sticky top-0 z-10 border-b-4 border-amber-300 bg-[#FFF3C4]">
-          <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 px-4 py-3">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-3">
             <Link href="/" className="text-2xl font-black">
               🗝️ 형님의 비밀기지
             </Link>
-            <nav className="flex gap-2 text-lg font-bold" aria-label="주요 메뉴">
+            <nav className="flex flex-wrap gap-2 text-lg font-bold" aria-label="주요 메뉴">
               <Link className="rounded-2xl bg-white px-4 py-2 shadow" href="/town">
                 동네탐험
               </Link>
