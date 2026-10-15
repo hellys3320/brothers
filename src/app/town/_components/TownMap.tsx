@@ -119,7 +119,7 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
     refresh();
   }, [found]);
 
-  // 탐험 출발: 형님이 🏠에서 핀까지 걸어감
+  // 탐험 출발: 형님이 🏠에서 핀까지 진짜 길 따라 걸어감 (OSRM 도보 경로, 실패시 직선)
   const expId = expedition?.id ?? null;
   useEffect(() => {
     if (!expId) return;
@@ -136,22 +136,55 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
         return;
       }
       const from = st.center;
-      const line = L.polyline(
-        [
-          [from.lat, from.lng],
-          [target.lat, target.lng],
-        ],
-        { dashArray: "8 8", color: "#f59e0b", weight: 4 }
-      ).addTo(map);
-      const me = L.marker([from.lat, from.lng], {
+      // 도보 경로 조회 (10초 제한, 실패하면 직선)
+      let path: Array<[number, number]> = [
+        [from.lat, from.lng],
+        [target.lat, target.lng],
+      ];
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 10000);
+        const r = await fetch(
+          `https://router.project-osrm.org/route/v1/foot/${from.lng},${from.lat};${target.lng},${target.lat}?overview=full&geometries=geojson`,
+          { signal: ctrl.signal }
+        );
+        clearTimeout(t);
+        if (r.ok) {
+          const j = (await r.json()) as { routes?: Array<{ geometry?: { coordinates?: number[][] } }> };
+          const coords = j.routes?.[0]?.geometry?.coordinates;
+          if (coords && coords.length >= 2) path = coords.map(([lng, lat]) => [lat, lng]);
+        }
+      } catch {
+        // 직선 폴백
+      }
+      const line = L.polyline(path, { dashArray: "8 8", color: "#f59e0b", weight: 5 }).addTo(map);
+      map.flyToBounds(line.getBounds().pad(0.25), { duration: 0.8 });
+      const me = L.marker(path[0], {
         icon: L.divIcon({ className: "", html: `<div style="font-size:38px">🕵️</div>`, iconSize: [44, 44], iconAnchor: [22, 22] }),
         zIndexOffset: 1000,
       }).addTo(map);
+      // 구간 길이 누적 → 일정한 속도로 걷기
+      const seg: number[] = [0];
+      for (let i = 1; i < path.length; i++) {
+        const dx = (path[i][1] - path[i - 1][1]) * 111320 * Math.cos((path[i][0] * Math.PI) / 180);
+        const dy = (path[i][0] - path[i - 1][0]) * 110540;
+        seg.push(seg[i - 1] + Math.hypot(dx, dy));
+      }
+      const total = Math.max(1, seg[seg.length - 1]);
+      const dur = 4000;
       const t0 = performance.now();
-      const dur = 3200;
+      const at = (d: number): [number, number] => {
+        let i = 1;
+        while (i < seg.length - 1 && seg[i] < d) i++;
+        const k = seg[i] === seg[i - 1] ? 0 : (d - seg[i - 1]) / (seg[i] - seg[i - 1]);
+        return [
+          path[i - 1][0] + (path[i][0] - path[i - 1][0]) * k,
+          path[i - 1][1] + (path[i][1] - path[i - 1][1]) * k,
+        ];
+      };
       const step = (t: number) => {
         const k = Math.min(1, (t - t0) / dur);
-        me.setLatLng([from.lat + (target.lat - from.lat) * k, from.lng + (target.lng - from.lng) * k]);
+        me.setLatLng(at(total * k));
         if (k < 1) {
           raf = requestAnimationFrame(step);
         } else if (!done) {

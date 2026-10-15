@@ -255,7 +255,9 @@ export default function TownExplorer() {
       )}
 
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {places.map((f) => {
+        {[...places]
+          .sort((a, b) => Number(found.includes(a.id)) - Number(found.includes(b.id)))
+          .map((f) => {
           const got = found.includes(f.id);
           const meters = Math.round(distM(center.lat, center.lng, f.lat, f.lng));
           const hint = `🧭 ${dirWord(center.lat, center.lng, f.lat, f.lng)}으로 ${meters < 150 ? "바로 앞" : `약 ${Math.round(meters / 100) * 100}m`}!`;
