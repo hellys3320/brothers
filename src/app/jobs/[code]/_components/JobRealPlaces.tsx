@@ -18,7 +18,7 @@ export default function JobRealPlaces({ jobCode, jobName }: { jobCode: string; j
   useEffect(() => {
     if (!me) return;
     let live = true;
-    fetchPlacesForJob(jobCode, me.lat, me.lng)
+    fetchPlacesForJob(jobCode, me.lat, me.lng, me.dong)
       .then((r) => {
         if (live) setPlaces(r);
       })
