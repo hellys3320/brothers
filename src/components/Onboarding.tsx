@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { geocodeDong, reverseDong, saveMe, type MeProfile } from "@/lib/me";
+import { searchHome, reverseDong, saveMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
 
 const HomePicker = dynamic(() => import("./HomePicker"), {
@@ -26,7 +26,7 @@ export default function Onboarding({ onDone }: { onDone: (me: MeProfile) => void
     if (!q.trim()) return;
     setBusy(true);
     try {
-      const r = await geocodeDong(q);
+      const r = await searchHome(q);
       setCands(r);
       if (r.length === 0) speak("못 찾았어. 아파트나 학교 이름으로 다시 써봐!");
     } catch {

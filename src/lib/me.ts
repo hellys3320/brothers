@@ -34,7 +34,37 @@ export function clearMe() {
   } catch {}
 }
 
-// 동네 이름 → 좌표 (OpenStreetMap Nominatim, 키 없음)
+// 집 찾기: 카카오(한국 주소·아파트·가게명에 강함) 우선, 없으면 OSM
+export async function searchHome(query: string): Promise<MeProfile[]> {
+  const q = query.trim();
+  if (!q) return [];
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 15000);
+    const res = await fetch(`/api/places/search?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (res.ok) {
+      const j = (await res.json()) as {
+        ok: boolean;
+        items?: Array<{ lat: number; lng: number; name: string; addr: string }>;
+      };
+      if (j.ok && Array.isArray(j.items) && j.items.length > 0) {
+        return j.items.map((a) => ({
+          nickname: "",
+          dong: q,
+          lat: a.lat,
+          lng: a.lng,
+          label: a.addr ? `${a.name} (${a.addr})` : a.name,
+        }));
+      }
+    }
+  } catch {
+    // OSM으로 폴백
+  }
+  return geocodeDong(q);
+}
+
+// 동네 이름 → 좌표 (OpenStreetMap Nominatim, 키 없음, 폴백용)
 export async function geocodeDong(query: string): Promise<MeProfile[]> {
   const q = query.trim();
   if (!q) return [];
