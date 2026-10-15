@@ -30,6 +30,7 @@ function loadStamps(): string[] {
 export default function TownExplorer() {
   const [found, setFound] = useState<string[]>(loadStamps);
   const [listMode, setListMode] = useState(false);
+  const [cheer, setCheer] = useState<string | null>(null);
 
   function discover(id: string) {
     const f = MOCK_TOWN.find((x) => x.id === id);
@@ -40,10 +41,28 @@ export default function TownExplorer() {
       localStorage.setItem("brothers-stamps", JSON.stringify(next));
     } catch {}
     speak(`${f.name}. ${f.easy} 스탬프를 받았다!`);
+    setCheer(`${f.stamp} 찾았다!`);
+    setTimeout(() => setCheer(null), 1500);
+    if (next.length >= MOCK_TOWN.length) {
+      setTimeout(() => speak("우와! 비밀 5개를 다 찾았어! 너는 진짜 동네박사야!"), 1600);
+    }
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="relative flex flex-col gap-4">
+      {cheer && (
+        <div className="animate-pop pointer-events-none fixed inset-x-0 top-24 z-20 mx-auto w-fit rounded-full bg-amber-400 px-8 py-4 text-3xl font-black shadow-xl">
+          🎉 {cheer}
+        </div>
+      )}
+      <div className="rounded-2xl bg-white p-3 shadow">
+        <div className="h-5 overflow-hidden rounded-full bg-stone-200">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-amber-400 transition-all"
+            style={{ width: `${(found.length / MOCK_TOWN.length) * 100}%` }}
+          />
+        </div>
+      </div>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xl font-black">
           찾은 비밀 {found.length} / {MOCK_TOWN.length}개 🎉

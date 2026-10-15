@@ -39,3 +39,21 @@ body {
     max-width: 100% !important;
   }
 }
+
+/* 재미: 등장·흔들·두둥실 */
+@keyframes pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-pop { animation: pop 0.35s ease-out; }
+.animate-wiggle { animation: wiggle 2.5s ease-in-out infinite; }
+.animate-floaty { animation: floaty 3s ease-in-out infinite; }

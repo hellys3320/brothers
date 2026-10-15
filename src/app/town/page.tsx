@@ -7,7 +7,7 @@ export default function TownPage() {
   return (
     <div className="flex flex-col gap-5">
       <h1 className="text-3xl font-black">🗺️ 우리동네 비밀지도</h1>
-      <HyungnimTalk text="햇살동에는 비밀이 5개 숨겨져 있어. 카드를 눌러 하나씩 찾아봐!" />
+      <HyungnimTalk text="네 동네 중심에 비밀 5개를 숨겼어! 🏠에서 출발해 핀을 눌러봐!" />
       <TownExplorer />
       <div className="rounded-3xl bg-white p-5 shadow">
         <h2 className="text-2xl font-black">🏪 가게에서 직업 찾기 ({MOCK_SHOPS.length}곳)</h2>
