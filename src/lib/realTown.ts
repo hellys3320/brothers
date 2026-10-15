@@ -12,9 +12,20 @@ const OVERPASS_URLS = [
 
 export type RealSource = "overpass" | "seoul" | "kakao" | "nominatim";
 
+// fetch 시간제한 (무응답 서버에 화면이 멈추지 않게)
+async function fetchTimeout(url: string, init: RequestInit, ms: number): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 async function fetchViaKakao(lat: number, lng: number, dong: string): Promise<TownFacility[]> {
   try {
-    const res = await fetch(`/api/places/kakao?lat=${lat}&lng=${lng}&dong=${encodeURIComponent(dong)}`);
+    const res = await fetchTimeout(`/api/places/kakao?lat=${lat}&lng=${lng}&dong=${encodeURIComponent(dong)}`, {}, 25000);
     if (!res.ok) return [];
     const j = (await res.json()) as {
       ok: boolean;
@@ -29,7 +40,7 @@ async function fetchViaKakao(lat: number, lng: number, dong: string): Promise<To
 
 async function fetchViaSeoul(lat: number, lng: number, dong: string): Promise<TownFacility[]> {
   try {
-    const res = await fetch(`/api/places/seoul?lat=${lat}&lng=${lng}`);
+    const res = await fetchTimeout(`/api/places/seoul?lat=${lat}&lng=${lng}`, {}, 25000);
     if (!res.ok) return [];
     const j = (await res.json()) as {
       ok: boolean;
@@ -45,11 +56,15 @@ async function fetchViaSeoul(lat: number, lng: number, dong: string): Promise<To
 async function fetchOverpass(q: string): Promise<Response | null> {
   for (const url of OVERPASS_URLS) {
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: "data=" + encodeURIComponent(q),
-      });
+      const res = await fetchTimeout(
+        url,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "data=" + encodeURIComponent(q),
+        },
+        10000
+      );
       if (res.ok) return res;
     } catch {
       // 다음 미러로
@@ -150,10 +165,9 @@ function applyCaps(lat: number, lng: number, items: TownFacility[]): TownFacilit
 }
 
 async function viaOverpass(lat: number, lng: number, dong: string): Promise<TownFacility[]> {
-  const merged = new Map<string, TownFacility>();
-  // 좁게 먼저, 8개 모일 때까지 넓히며 합침 (1개 있다고 멈추지 않음)
-  for (const r of [2000, 5000]) {
-    const q = `
+  // 한 번에 3.5km 조회 (반경 나눠서 여러 번 물으면 느려서 멈춘 것처럼 보임)
+  const r = 3500;
+  const q = `
 [out:json][timeout:25];
 (
   nwr["amenity"="library"](around:${r},${lat},${lng});
@@ -166,37 +180,36 @@ async function viaOverpass(lat: number, lng: number, dong: string): Promise<Town
   nwr["amenity"~"^(police|fire_station)$"](around:${r},${lat},${lng});
 );
 out center 80;`.trim();
-    try {
-      const res = await fetchOverpass(q);
-      if (!res) continue;
-      const json = (await res.json()) as { elements?: OverpassEl[] };
-      for (const el of json.elements ?? []) {
-        const tags = el.tags ?? {};
-        const name = tags["name:ko"] ?? tags.name;
-        if (!name) continue;
-        const kind = kindOf(tags);
-        if (!kind) continue;
-        const key = `${kind}:${name}`;
-        if (merged.has(key)) continue;
-        const plat = el.lat ?? el.center?.lat;
-        const plng = el.lon ?? el.center?.lon;
-        if (plat == null || plng == null) continue;
-        merged.set(key, {
-          id: `osm-${el.type}-${el.id}`,
-          name,
-          kind,
-          dong,
-          easy: easyOf(kind, distM(lat, lng, plat, plng)),
-          stamp: stampOf(tags),
-          safeLevel: "초록",
-          lat: plat,
-          lng: plng,
-        });
-      }
-    } catch {
-      // 다음 반경으로
+  const merged = new Map<string, TownFacility>();
+  try {
+    const res = await fetchOverpass(q);
+    if (!res) return [];
+    const json = (await res.json()) as { elements?: OverpassEl[] };
+    for (const el of json.elements ?? []) {
+      const tags = el.tags ?? {};
+      const name = tags["name:ko"] ?? tags.name;
+      if (!name) continue;
+      const kind = kindOf(tags);
+      if (!kind) continue;
+      const key = `${kind}:${name}`;
+      if (merged.has(key)) continue;
+      const plat = el.lat ?? el.center?.lat;
+      const plng = el.lon ?? el.center?.lon;
+      if (plat == null || plng == null) continue;
+      merged.set(key, {
+        id: `osm-${el.type}-${el.id}`,
+        name,
+        kind,
+        dong,
+        easy: easyOf(kind, distM(lat, lng, plat, plng)),
+        stamp: stampOf(tags),
+        safeLevel: "초록",
+        lat: plat,
+        lng: plng,
+      });
     }
-    if (merged.size >= 8) break;
+  } catch {
+    return [...merged.values()];
   }
   return [...merged.values()];
 }
@@ -240,9 +253,10 @@ async function viaNominatim(lat: number, lng: number, dong: string): Promise<Tow
   await Promise.all(
     kinds.map(async ([kw, kind, stamp]) => {
       try {
-        const res = await fetch(
+        const res = await fetchTimeout(
           `https://nominatim.openstreetmap.org/search?format=json&countrycodes=kr&limit=4&q=${encodeURIComponent(`${kw} ${dong}`)}`,
-          { headers: { Accept: "application/json" } }
+          { headers: { Accept: "application/json" } },
+          10000
         );
         if (!res.ok) return;
         const arr = (await res.json()) as NominatimEl[];
@@ -262,9 +276,10 @@ async function viaNominatim(lat: number, lng: number, dong: string): Promise<Tow
   await Promise.all(
     kinds.map(async ([kw, kind, stamp]) => {
       try {
-        const res = await fetch(
+        const res = await fetchTimeout(
           `https://nominatim.openstreetmap.org/search?format=json&countrycodes=kr&limit=8&bounded=1&viewbox=${vb}&q=${encodeURIComponent(kw)}`,
-          { headers: { Accept: "application/json" } }
+          { headers: { Accept: "application/json" } },
+          10000
         );
         if (!res.ok) return;
         const arr = (await res.json()) as NominatimEl[];
@@ -291,16 +306,29 @@ export interface RealDebug {
   nominatim: number;
 }
 
+export type ProgressStep = { source: "kakao" | "seoul" | "overpass" | "nominatim"; count: number };
+
 export async function fetchRealFacilities(
   lat: number,
   lng: number,
-  dong: string
+  dong: string,
+  onStep?: (s: ProgressStep) => void
 ): Promise<{ items: TownFacility[]; via: RealSource; debug: RealDebug } | null> {
+  const wrap = async (source: ProgressStep["source"], p: Promise<TownFacility[]>) => {
+    try {
+      const r = await p;
+      onStep?.({ source, count: r.length });
+      return r;
+    } catch {
+      onStep?.({ source, count: -1 });
+      return [];
+    }
+  };
   const [kak, seo, over, nom] = await Promise.all([
-    fetchViaKakao(lat, lng, dong),
-    fetchViaSeoul(lat, lng, dong),
-    viaOverpass(lat, lng, dong),
-    viaNominatim(lat, lng, dong),
+    wrap("kakao", fetchViaKakao(lat, lng, dong)),
+    wrap("seoul", fetchViaSeoul(lat, lng, dong)),
+    wrap("overpass", viaOverpass(lat, lng, dong)),
+    wrap("nominatim", viaNominatim(lat, lng, dong)),
   ]);
   const debug: RealDebug = { kakao: kak.length, seoul: seo.length, overpass: over.length, nominatim: nom.length };
   const merged = new Map<string, TownFacility>();
@@ -349,7 +377,7 @@ export async function fetchPlacesForJob(
 ): Promise<JobPlace[] | null> {
   // 1순위: 카카오 (키 있을 때)
   try {
-    const res = await fetch(`/api/places/kakao?job=${jobCode}&lat=${lat}&lng=${lng}&dong=${encodeURIComponent(dong)}`);
+    const res = await fetchTimeout(`/api/places/kakao?job=${jobCode}&lat=${lat}&lng=${lng}&dong=${encodeURIComponent(dong)}`, {}, 25000);
     if (res.ok) {
       const j = (await res.json()) as { ok: boolean; items?: JobPlace[] };
       if (j.ok && Array.isArray(j.items) && j.items.length > 0) return j.items;

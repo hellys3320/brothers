@@ -39,14 +39,22 @@ export async function geocodeDong(query: string): Promise<MeProfile[]> {
   const q = query.trim();
   if (!q) return [];
   const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=kr&limit=5&q=${encodeURIComponent(q)}`;
-  const res = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!res.ok) return [];
-  const arr = (await res.json()) as Array<{ display_name: string; lat: string; lon: string }>;
-  return arr.map((a) => ({
-    nickname: "",
-    dong: q,
-    lat: Number(a.lat),
-    lng: Number(a.lon),
-    label: a.display_name.split(",").slice(0, 3).join(","),
-  }));
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/json" }, signal: ctrl.signal });
+    if (!res.ok) return [];
+    const arr = (await res.json()) as Array<{ display_name: string; lat: string; lon: string }>;
+    return arr.map((a) => ({
+      nickname: "",
+      dong: q,
+      lat: Number(a.lat),
+      lng: Number(a.lon),
+      label: a.display_name.split(",").slice(0, 3).join(","),
+    }));
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(t);
+  }
 }

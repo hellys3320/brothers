@@ -21,6 +21,7 @@ async function kakaoGet(key: string, path: string, params: Record<string, string
   const qs = new URLSearchParams(params).toString();
   const res = await fetch(`${KAKAO}${path}?${qs}`, {
     headers: { Authorization: `KakaoAK ${key}` },
+    signal: AbortSignal.timeout(12000),
   });
   if (!res.ok) return [];
   const j = (await res.json()) as { documents?: KakaoDoc[] };

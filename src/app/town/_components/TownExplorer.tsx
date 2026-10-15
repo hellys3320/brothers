@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
-import { fetchRealFacilities, loadCached, saveCached, type RealSource, type RealDebug } from "@/lib/realTown";
+import { fetchRealFacilities, loadCached, saveCached, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
 
@@ -48,6 +48,44 @@ export default function TownExplorer() {
   const [searching, setSearching] = useState(() => !init.real && init.profile !== null);
   const [failed, setFailed] = useState(false);
   const [debug, setDebug] = useState<RealDebug | null>(null);
+  const [steps, setSteps] = useState<ProgressStep[]>([]);
+
+  const STEP_LABEL: Record<ProgressStep["source"], string> = {
+    kakao: "카카오 지도",
+    seoul: "서울시 데이터",
+    overpass: "세계 지도",
+    nominatim: "이름 찾기",
+  };
+
+  function runSearch() {
+    if (!me) return;
+    setFailed(false);
+    setSearching(true);
+    setSteps([]);
+    fetchRealFacilities(
+      me.lat,
+      me.lng,
+      me.dong,
+      (s) => setSteps((prev) => [...prev.filter((p) => p.source !== s.source), s])
+    )
+      .then((r) => {
+        if (r) {
+          setPlaces(r.items);
+          setRealMode(r.via);
+          setDebug(r.debug);
+          saveCached(me.lat, me.lng, r.items);
+        } else {
+          setFailed(true);
+        }
+      })
+      .catch(() => setFailed(true))
+      .finally(() => setSearching(false));
+  }
+
+  function retry() {
+    runSearch();
+  }
+
   const [found, setFound] = useState<string[]>(loadStamps);
   const [listMode, setListMode] = useState(false);
   const [cheer, setCheer] = useState<string | null>(null);
@@ -56,7 +94,9 @@ export default function TownExplorer() {
   useEffect(() => {
     if (!me || realMode) return;
     let live = true;
-    fetchRealFacilities(me.lat, me.lng, me.dong)
+    fetchRealFacilities(me.lat, me.lng, me.dong, (s) => {
+      if (live) setSteps((prev) => [...prev.filter((p) => p.source !== s.source), s]);
+    })
       .then((r) => {
         if (!live) return;
         if (r) {
@@ -79,25 +119,6 @@ export default function TownExplorer() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function retry() {
-    if (!me) return;
-    setFailed(false);
-    setSearching(true);
-    fetchRealFacilities(me.lat, me.lng, me.dong)
-      .then((r) => {
-        if (r) {
-          setPlaces(r.items);
-          setRealMode(r.via);
-          setDebug(r.debug);
-          saveCached(me.lat, me.lng, r.items);
-        } else {
-          setFailed(true);
-        }
-      })
-      .catch(() => setFailed(true))
-      .finally(() => setSearching(false));
-  }
 
   function discover(id: string) {
     const f = places.find((x) => x.id === id);
@@ -168,7 +189,27 @@ export default function TownExplorer() {
         </p>
       )}
 
-      {searching && <p className="rounded-2xl bg-white p-4 text-center font-black">🔍 {center.dong}의 진짜 도서관·공원을 찾는 중...</p>}
+      {searching && (
+        <div className="animate-pop rounded-3xl bg-white p-5 shadow">
+          <p className="text-center text-xl font-black">🔍 {center.dong}의 진짜 장소를 찾는 중... ({steps.length}/4)</p>
+          <div className="mt-2 h-5 overflow-hidden rounded-full bg-stone-200">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 transition-all"
+              style={{ width: `${(steps.length / 4) * 100}%` }}
+            />
+          </div>
+          <ul className="mt-2 font-bold">
+            {(["kakao", "seoul", "overpass", "nominatim"] as const).map((k) => {
+              const s = steps.find((p) => p.source === k);
+              return (
+                <li key={k}>
+                  {s ? (s.count >= 0 ? `✅ ${STEP_LABEL[k]}에서 ${s.count}개!` : `➖ ${STEP_LABEL[k]} 건너뜀`) : `⏳ ${STEP_LABEL[k]} 찾는 중...`}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {listMode ? null : <TownMap found={found} onDiscover={discover} facilities={places} center={center} />}
 
