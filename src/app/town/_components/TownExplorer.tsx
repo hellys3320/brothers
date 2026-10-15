@@ -15,6 +15,7 @@ const TownMap = dynamic(() => import("./TownMap"), {
 const KIND_COLOR: Record<FacilityKind, string> = {
   도서관: "bg-sky-200",
   공원: "bg-green-200",
+  학교: "bg-indigo-200",
   병원: "bg-red-200",
   안전지킴이집: "bg-yellow-200",
   주의길: "bg-orange-200",

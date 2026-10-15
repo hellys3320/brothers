@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { MOCK_JOBS } from "@/lib/mock";
-import { countShopsByJob } from "@/lib/shops";
 import { speak } from "@/lib/speak";
 
 export default function JobMatcher() {
@@ -16,7 +15,6 @@ export default function JobMatcher() {
     return sb - sa;
   });
   const top3 = sorted.slice(0, 3);
-  const shopCount = countShopsByJob();
 
   function recommend() {
     speak(`너에게 어울리는 직업은 ${top3.map((j) => j.name).join(", ")}!`);
@@ -54,8 +52,7 @@ export default function JobMatcher() {
                 <li key={t}>· {t}</li>
               ))}
             </ul>
-            <p className="mt-1 font-bold">📍 {j.townPlace}</p>
-            <p className="font-black text-emerald-700">🏪 우리동네 가게 {shopCount[j.code] ?? 0}곳 연결됨</p>
+            <p className="mt-1 font-bold">📍 우리동네에서 만나봐!</p>
             <Link
               href={`/jobs/${j.code}`}
               className="mt-3 block rounded-2xl bg-sky-300 px-4 py-3 text-center text-xl font-black"
