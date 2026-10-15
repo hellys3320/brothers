@@ -18,6 +18,7 @@ export default function QuizRunner() {
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [results, setResults] = useState<boolean[]>([]);
+  const [picks, setPicks] = useState<number[]>([]);
   const [best, setBest] = useState<number>(loadBest);
 
   const q = MOCK_QUIZ[idx];
@@ -37,6 +38,7 @@ export default function QuizRunner() {
     const ok = picked === q.answer;
     const nextResults = [...results, ok];
     setResults(nextResults);
+    setPicks([...picks, picked]);
     setPicked(null);
     if (nextResults.length >= MOCK_QUIZ.length) {
       const s = nextResults.filter(Boolean).length;
@@ -57,24 +59,48 @@ export default function QuizRunner() {
     setIdx(0);
     setPicked(null);
     setResults([]);
+    setPicks([]);
   }
 
   if (done) {
     return (
-      <div className="rounded-3xl bg-white p-8 text-center shadow">
-        <p className="text-4xl">🎉</p>
-        <h2 className="text-3xl font-black">
-          끝! {MOCK_QUIZ.length}개 중 {score}개 맞혔어!
-        </h2>
-        <p className="mt-2 text-xl font-bold">{score >= 4 ? "칭호: 동네박사!" : score >= 2 ? "칭호: 탐험대원!" : "칭호: 탐험견습생!"}</p>
-        <p className="mt-1 font-bold text-stone-500">역대 최고: {Math.max(best, score)}개</p>
-        <div className="mt-4 flex gap-2">
-          <button type="button" onClick={retry} className="flex-1 rounded-2xl bg-amber-400 px-6 py-3 text-xl font-black">
-            다시 하기
-          </button>
-          <a href="/town" className="flex-1 rounded-2xl bg-emerald-300 px-6 py-3 text-center text-xl font-black">
-            탐험하러 가기
-          </a>
+      <div className="flex flex-col gap-4">
+        <div className="rounded-3xl bg-white p-8 text-center shadow">
+          <p className="text-4xl">🎉</p>
+          <h2 className="text-3xl font-black">
+            끝! {MOCK_QUIZ.length}개 중 {score}개 맞혔어!
+          </h2>
+          <p className="mt-2 text-xl font-bold">{score >= 4 ? "칭호: 동네박사!" : score >= 2 ? "칭호: 탐험대원!" : "칭호: 탐험견습생!"}</p>
+          <p className="mt-1 font-bold text-stone-500">역대 최고: {Math.max(best, score)}개</p>
+          <div className="mt-4 flex gap-2">
+            <button type="button" onClick={retry} className="flex-1 rounded-2xl bg-amber-400 px-6 py-3 text-xl font-black">
+              다시 하기
+            </button>
+            <a href="/town" className="flex-1 rounded-2xl bg-emerald-300 px-6 py-3 text-center text-xl font-black">
+              탐험하러 가기
+            </a>
+          </div>
+        </div>
+        <div className="rounded-3xl bg-white p-6 shadow">
+          <h3 className="text-2xl font-black">📝 정답 확인!</h3>
+          <ul className="mt-3 flex flex-col gap-3">
+            {MOCK_QUIZ.map((item, i) => {
+              const mine = picks[i];
+              const ok = results[i];
+              return (
+                <li key={item.id} className={`rounded-2xl border-4 p-4 ${ok ? "border-green-400 bg-green-50" : "border-red-300 bg-red-50"}`}>
+                  <p className="text-lg font-black">
+                    {ok ? "⭕" : "❌"} {i + 1}. {item.q}
+                  </p>
+                  <p className="mt-1 font-bold">
+                    내가 고른 답: {mine != null ? `${mine + 1}. ${item.choices[mine]}` : "없음"}
+                  </p>
+                  {!ok && <p className="font-black text-emerald-700">정답: {item.answer + 1}. {item.choices[item.answer]}</p>}
+                  <p className="mt-1 text-sm font-bold text-stone-500">{item.say}</p>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </div>
     );
