@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
-import { fetchRealFacilities, loadCached, saveCached } from "@/lib/realTown";
+import { fetchRealFacilities, loadCached, saveCached, type RealSource } from "@/lib/realTown";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
 
@@ -42,8 +42,9 @@ export default function TownExplorer() {
   const [init] = useState(initPlaces);
   const me = init.profile;
   const [places, setPlaces] = useState<TownFacility[]>(init.list);
-  const [realMode, setRealMode] = useState(init.real);
+  const [realMode, setRealMode] = useState<RealSource | null>(() => (init.real ? "overpass" : null));
   const [searching, setSearching] = useState(() => !init.real && init.profile !== null);
+  const [failed, setFailed] = useState(false);
   const [found, setFound] = useState<string[]>(loadStamps);
   const [listMode, setListMode] = useState(false);
   const [cheer, setCheer] = useState<string | null>(null);
@@ -56,12 +57,16 @@ export default function TownExplorer() {
       .then((r) => {
         if (!live) return;
         if (r) {
-          setPlaces(r);
-          setRealMode(true);
-          saveCached(me.lat, me.lng, r);
+          setPlaces(r.items);
+          setRealMode(r.via);
+          saveCached(me.lat, me.lng, r.items);
+        } else {
+          setFailed(true);
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        if (live) setFailed(true);
+      })
       .finally(() => {
         if (live) setSearching(false);
       });
@@ -70,6 +75,24 @@ export default function TownExplorer() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function retry() {
+    if (!me) return;
+    setFailed(false);
+    setSearching(true);
+    fetchRealFacilities(me.lat, me.lng, me.dong)
+      .then((r) => {
+        if (r) {
+          setPlaces(r.items);
+          setRealMode(r.via);
+          saveCached(me.lat, me.lng, r.items);
+        } else {
+          setFailed(true);
+        }
+      })
+      .catch(() => setFailed(true))
+      .finally(() => setSearching(false));
+  }
 
   function discover(id: string) {
     const f = places.find((x) => x.id === id);
@@ -101,7 +124,13 @@ export default function TownExplorer() {
       <div className="rounded-2xl bg-white p-3 shadow">
         <p className="mb-1 text-xl font-black">
           찾은 비밀 {gotCount} / {places.length}개 🎉
-          {realMode ? <span className="ml-2 text-base text-emerald-700">진짜 장소!</span> : <span className="ml-2 text-base text-stone-400">연습 장소</span>}
+          {realMode ? (
+            <span className="ml-2 text-base text-emerald-700">
+              {realMode === "overpass" ? "진짜 장소!" : "진짜 장소(간이)!"}
+            </span>
+          ) : (
+            <span className="ml-2 text-base text-stone-400">연습 장소</span>
+          )}
         </p>
         <div className="h-5 overflow-hidden rounded-full bg-stone-200">
           <div
@@ -150,9 +179,20 @@ export default function TownExplorer() {
         })}
       </ul>
       {!realMode && me && !searching && (
-        <p className="rounded-2xl bg-white p-4 text-center font-bold text-stone-500">
-          진짜 장소를 못 가져왔어. 인터넷을 확인하고 다시 와줘! (연습 장소를 보여주는 중)
-        </p>
+        <div className="rounded-2xl bg-white p-4 text-center shadow">
+          <p className="font-bold text-stone-500">
+            {failed
+              ? "진짜 장소를 못 가져왔어. 인터넷이 막혔거나 지도에 등록된 곳이 없어!"
+              : "연습 장소를 보여주는 중이야."}
+          </p>
+          <button
+            type="button"
+            onClick={retry}
+            className="mt-2 rounded-full bg-emerald-400 px-6 py-2 font-black shadow"
+          >
+            🔄 진짜 장소 다시 찾기
+          </button>
+        </div>
       )}
     </div>
   );

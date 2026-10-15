@@ -1,5 +1,7 @@
-// 진짜 동네 장소 가져오기 (OpenStreetMap Overpass, 키 없음)
-// 도서관·공원·병원·경찰서/소방서를 내 동네 좌표 주변에서 검색
+// 진짜 동네 장소 가져오기 (키 없음)
+// 1순위: OpenStreetMap Overpass (반경 1.5km → 3km → 5km)
+// 2순위: Nominatim 지명 검색 (도서관/공원/병원/경찰서 + 동네)
+// 전부 실패하면 null → 호출 쪽에서 연습 장소로 폴백
 import type { TownFacility } from "./mock";
 
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
@@ -8,6 +10,8 @@ const OVERPASS_URLS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
 ];
+
+export type RealSource = "overpass" | "nominatim";
 
 async function fetchOverpass(q: string): Promise<Response | null> {
   for (const url of OVERPASS_URLS) {
@@ -38,6 +42,10 @@ function distM(lat1: number, lng1: number, lat2: number, lng2: number) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+function walkText(meters: number) {
+  return meters < 150 ? "바로 앞!" : `약 ${Math.round(meters / 100) * 100}m!`;
+}
+
 interface OverpassEl {
   type: string;
   id: number;
@@ -65,7 +73,7 @@ function stampOf(tags: Record<string, string>): string {
 }
 
 function easyOf(kind: TownFacility["kind"], meters: number): string {
-  const walk = meters < 150 ? "바로 앞!" : `약 ${Math.round(meters / 100) * 100}m!`;
+  const walk = walkText(meters);
   switch (kind) {
     case "도서관":
       return `진짜 도서관! 책 빌리러 가봐. ${walk}`;
@@ -80,62 +88,128 @@ function easyOf(kind: TownFacility["kind"], meters: number): string {
   }
 }
 
-export async function fetchRealFacilities(lat: number, lng: number, dong: string): Promise<TownFacility[] | null> {
-  const q = `
+async function viaOverpass(lat: number, lng: number, dong: string): Promise<TownFacility[] | null> {
+  for (const r of [1500, 3000, 5000]) {
+    const q = `
 [out:json][timeout:25];
 (
-  nwr["amenity"="library"](around:1500,${lat},${lng});
-  nwr["leisure"="park"](around:1500,${lat},${lng});
-  nwr["leisure"="playground"](around:1500,${lat},${lng});
-  nwr["amenity"~"^(hospital|clinic|pharmacy)$"](around:1500,${lat},${lng});
-  nwr["amenity"~"^(police|fire_station)$"](around:1500,${lat},${lng});
+  nwr["amenity"="library"](around:${r},${lat},${lng});
+  nwr["leisure"="park"](around:${r},${lat},${lng});
+  nwr["leisure"="playground"](around:${r},${lat},${lng});
+  nwr["amenity"~"^(hospital|clinic|pharmacy)$"](around:${r},${lat},${lng});
+  nwr["amenity"~"^(police|fire_station)$"](around:${r},${lat},${lng});
 );
 out center 60;`.trim();
-
-  const res = await fetchOverpass(q);
-  if (!res) return null;
-  const json = (await res.json()) as { elements?: OverpassEl[] };
-  const els = json.elements ?? [];
-
-  const seen = new Set<string>();
-  const items: TownFacility[] = [];
-  for (const el of els) {
-    const tags = el.tags ?? {};
-    const name = tags["name:ko"] ?? tags.name;
-    if (!name) continue;
-    const kind = kindOf(tags);
-    if (!kind) continue;
-    const key = `${kind}:${name}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const plat = el.lat ?? el.center?.lat;
-    const plng = el.lon ?? el.center?.lon;
-    if (plat == null || plng == null) continue;
-    const meters = distM(lat, lng, plat, plng);
-    items.push({
-      id: `osm-${el.type}-${el.id}`,
-      name,
-      kind,
-      dong,
-      easy: easyOf(kind, meters),
-      stamp: stampOf(tags),
-      safeLevel: "초록",
-      lat: plat,
-      lng: plng,
-    });
+    try {
+      const res = await fetchOverpass(q);
+      if (!res) continue;
+      const json = (await res.json()) as { elements?: OverpassEl[] };
+      const els = json.elements ?? [];
+      const seen = new Set<string>();
+      const items: TownFacility[] = [];
+      for (const el of els) {
+        const tags = el.tags ?? {};
+        const name = tags["name:ko"] ?? tags.name;
+        if (!name) continue;
+        const kind = kindOf(tags);
+        if (!kind) continue;
+        const key = `${kind}:${name}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const plat = el.lat ?? el.center?.lat;
+        const plng = el.lon ?? el.center?.lon;
+        if (plat == null || plng == null) continue;
+        items.push({
+          id: `osm-${el.type}-${el.id}`,
+          name,
+          kind,
+          dong,
+          easy: easyOf(kind, distM(lat, lng, plat, plng)),
+          stamp: stampOf(tags),
+          safeLevel: "초록",
+          lat: plat,
+          lng: plng,
+        });
+      }
+      const cap: Record<TownFacility["kind"], number> = { 도서관: 3, 공원: 3, 병원: 2, 안전지킴이집: 2, 주의길: 0 };
+      const out: TownFacility[] = [];
+      for (const kind of ["도서관", "공원", "병원", "안전지킴이집"] as const) {
+        out.push(
+          ...items
+            .filter((i) => i.kind === kind)
+            .sort((a, b) => distM(lat, lng, a.lat, a.lng) - distM(lat, lng, b.lat, b.lng))
+            .slice(0, cap[kind])
+        );
+      }
+      if (out.length > 0) return out;
+    } catch {
+      // 다음 반경·미러로
+    }
   }
+  return null;
+}
 
-  // 종류별로 가까운 순, 최대 10개 (애들 눈에 맞게)
-  const cap: Record<TownFacility["kind"], number> = { 도서관: 3, 공원: 3, 병원: 2, 안전지킴이집: 2, 주의길: 0 };
+interface NominatimEl {
+  place_id: number;
+  lat: string;
+  lon: string;
+  name?: string;
+  display_name: string;
+}
+
+async function viaNominatim(lat: number, lng: number, dong: string): Promise<TownFacility[] | null> {
+  const kinds: Array<[string, TownFacility["kind"], string]> = [
+    ["도서관", "도서관", "📚"],
+    ["공원", "공원", "🌳"],
+    ["병원", "병원", "🏥"],
+    ["경찰서", "안전지킴이집", "🛟"],
+  ];
   const out: TownFacility[] = [];
-  for (const kind of ["도서관", "공원", "병원", "안전지킴이집"] as const) {
-    const group = items
-      .filter((i) => i.kind === kind)
-      .sort((a, b) => distM(lat, lng, a.lat, a.lng) - distM(lat, lng, b.lat, b.lng))
-      .slice(0, cap[kind]);
-    out.push(...group);
+  try {
+    for (const [kw, kind, stamp] of kinds) {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&countrycodes=kr&limit=4&q=${encodeURIComponent(`${kw} ${dong}`)}`,
+        { headers: { Accept: "application/json" } }
+      );
+      if (!res.ok) continue;
+      const arr = (await res.json()) as NominatimEl[];
+      let took = 0;
+      for (const a of arr) {
+        if (took >= 2) break;
+        const nm = a.name ?? a.display_name.split(",")[0];
+        if (!nm || out.some((o) => o.name === nm)) continue;
+        const plat = Number(a.lat);
+        const plng = Number(a.lon);
+        out.push({
+          id: `nom-${a.place_id}`,
+          name: nm,
+          kind,
+          dong,
+          easy: `지도에서 찾은 진짜 ${kind}! ${walkText(distM(lat, lng, plat, plng))}`,
+          stamp,
+          safeLevel: "초록",
+          lat: plat,
+          lng: plng,
+        });
+        took++;
+      }
+    }
+  } catch {
+    return out.length > 0 ? out : null;
   }
   return out.length > 0 ? out : null;
+}
+
+export async function fetchRealFacilities(
+  lat: number,
+  lng: number,
+  dong: string
+): Promise<{ items: TownFacility[]; via: RealSource } | null> {
+  const o = await viaOverpass(lat, lng, dong);
+  if (o) return { items: o, via: "overpass" };
+  const n = await viaNominatim(lat, lng, dong);
+  if (n) return { items: n, via: "nominatim" };
+  return null;
 }
 
 export function loadCached(lat: number, lng: number): TownFacility[] | null {
