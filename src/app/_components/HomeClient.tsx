@@ -22,13 +22,13 @@ export default function HomeClient() {
       <div className="animate-pop rounded-3xl bg-gradient-to-r from-amber-300 via-orange-300 to-pink-300 p-6 text-center shadow-lg">
         <p className="text-5xl">🕵️‍♂️</p>
         <h1 className="mt-1 text-3xl font-black">{me.nickname}의 비밀기지!</h1>
-        <p className="text-xl font-black">📍 {me.dong} 탐험중</p>
+        <p className="text-xl font-black">🏠 우리집 ({me.dong})에서 탐험중</p>
         <button
           type="button"
           onClick={() => { clearMe(); setMe(null); }}
           className="mt-2 rounded-full bg-white/80 px-4 py-1 text-sm font-black"
         >
-          이름·동네 바꾸기
+          우리집 바꾸기
         </button>
       </div>
 

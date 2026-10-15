@@ -101,7 +101,9 @@ async function townPlaces(key: string, lat: number, lng: number, dong: string, r
   return out;
 }
 
-// 직업 상세용 (job=baker 등)
+// 직업 상세용: 카드의 find 검색어로 우리동네 진짜 장소 조회
+import { MOCK_JOBS } from "@/lib/mock";
+
 async function jobPlaces(
   key: string,
   job: string,
@@ -112,39 +114,28 @@ async function jobPlaces(
   const x = String(lng);
   const y = String(lat);
   const K = { radius: "3000", sort: "distance" } as const;
-  switch (job) {
-    case "baker": {
-      const docs = await kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 빵집`, x, y, ...K, size: "8" });
-      return docs.slice(0, 5).map((d) => toPlace(d, "빵집", "🍞")).filter((p): p is KakaoPlace => !!p);
-    }
-    case "nurse": {
-      const [h, p] = await Promise.all([
-        kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "HP8", x, y, ...K, size: "8" }),
-        kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "PM9", x, y, ...K, size: "8" }),
-      ]);
-      return [...h.slice(0, 3), ...p.slice(0, 2)]
-        .map((d, i) => toPlace(d, "병원", i >= 3 ? "💊" : "🏥"))
-        .filter((p): p is KakaoPlace => !!p);
-    }
-    case "librarian": {
-      const docs = await kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 도서관`, x, y, ...K, size: "8" });
-      return docs.slice(0, 5).map((d) => toPlace(d, "도서관", "📚")).filter((p): p is KakaoPlace => !!p);
-    }
-    case "fire": {
-      const docs = await kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 소방서`, x, y, radius: "5000", sort: "distance", size: "5" });
-      return docs.slice(0, 3).map((d) => toPlace(d, "안전지킴이집", "🛟")).filter((p): p is KakaoPlace => !!p);
-    }
-    case "toon": {
-      const docs = await kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 서점`, x, y, ...K, size: "8" });
-      return docs.slice(0, 5).map((d) => toPlace(d, "도서관", "📖")).filter((p): p is KakaoPlace => !!p);
-    }
-    case "drone": {
-      const docs = await kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 공원`, x, y, ...K, size: "8" });
-      return docs.slice(0, 5).map((d) => toPlace(d, "공원", "🛸")).filter((p): p is KakaoPlace => !!p);
-    }
-    default:
-      return [];
+  const card = MOCK_JOBS.find((j) => j.code === job);
+  // 간호사·드론은 전용 조회 (약국 카테고리 / 공원)
+  if (job === "nurse") {
+    const [h, p] = await Promise.all([
+      kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "HP8", x, y, ...K, size: "8" }),
+      kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "PM9", x, y, ...K, size: "8" }),
+    ]);
+    return [...h.slice(0, 3), ...p.slice(0, 2)]
+      .map((d, i) => toPlace(d, "병원", i >= 3 ? "💊" : "🏥"))
+      .filter((p): p is KakaoPlace => !!p);
   }
+  if (job === "drone") {
+    const docs = await kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 공원`, x, y, ...K, size: "8" });
+    return docs.slice(0, 5).map((d) => toPlace(d, "공원", "🛸")).filter((p): p is KakaoPlace => !!p);
+  }
+  if (!card) return [];
+  const docs = await kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} ${card.find}`, x, y, ...K, size: "8" });
+  const stamp: Record<string, string> = { baker: "🍞", librarian: "📚", fire: "🛟", toon: "📖" };
+  return docs
+    .slice(0, 5)
+    .map((d) => toPlace(d, "빵집", stamp[job] ?? "📍"))
+    .filter((p): p is KakaoPlace => !!p);
 }
 
 export async function GET(req: Request) {

@@ -227,7 +227,6 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
         .openPopup();
     }
     show();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusKey]);
 
   return (

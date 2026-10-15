@@ -368,15 +368,8 @@ const JOB_FILTER: Record<string, string> = {
   fire: `nwr["amenity"="fire_station"](around:3000,LAT,LNG);`,
   toon: `nwr["shop"="books"](around:3000,LAT,LNG);`,
   drone: `nwr["leisure"~"^(park|playground)$"](around:3000,LAT,LNG);`,
-};
-
-export const JOB_PLACE_HINT: Record<string, string> = {
-  baker: "빵집",
-  nurse: "병원·약국",
-  librarian: "도서관",
-  fire: "소방서",
-  toon: "책방",
-  drone: "드론 날리기 좋은 공원",
+  teacher: `nwr["amenity"="school"](around:3000,LAT,LNG);`,
+  police: `nwr["amenity"="police"](around:3000,LAT,LNG);`,
 };
 
 export async function fetchPlacesForJob(

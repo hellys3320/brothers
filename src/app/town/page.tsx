@@ -3,7 +3,6 @@ import Link from "next/link";
 import HyungnimTalk from "@/components/HyungnimTalk";
 import TownExplorer from "./_components/TownExplorer";
 import { MOCK_JOBS } from "@/lib/mock";
-import { JOB_PLACE_HINT } from "@/lib/realTown";
 
 export default function TownPage() {
   return (
@@ -23,7 +22,7 @@ export default function TownPage() {
                 href={`/jobs/${j.code}`}
                 className="block rounded-2xl bg-amber-50 px-4 py-3 font-black hover:bg-amber-100"
               >
-                {j.emoji} {j.name} → 우리동네 {JOB_PLACE_HINT[j.code]} 보기
+                {j.emoji} {j.name} → 우리동네 {j.spot} 보기
               </Link>
             </li>
           ))}

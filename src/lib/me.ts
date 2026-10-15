@@ -58,3 +58,25 @@ export async function geocodeDong(query: string): Promise<MeProfile[]> {
     clearTimeout(t);
   }
 }
+
+// 좌표 → 동네 이름 (우리집 핀 확정용)
+export async function reverseDong(lat: number, lng: number, fallback: string): Promise<{ dong: string; label: string }> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&accept-language=ko`,
+      { headers: { Accept: "application/json" }, signal: ctrl.signal }
+    );
+    if (!res.ok) return { dong: fallback, label: fallback };
+    const j = (await res.json()) as { display_name?: string; address?: Record<string, string> };
+    const a = j.address ?? {};
+    const dong =
+      a.suburb ?? a.quarter ?? a.town ?? a.village ?? a.city_district ?? a.borough ?? a.county ?? fallback;
+    return { dong, label: (j.display_name ?? fallback).split(",").slice(0, 2).join(",") };
+  } catch {
+    return { dong: fallback, label: fallback };
+  } finally {
+    clearTimeout(t);
+  }
+}

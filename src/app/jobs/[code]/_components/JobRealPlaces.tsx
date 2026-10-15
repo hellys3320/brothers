@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchPlacesForJob, JOB_PLACE_HINT, type JobPlace } from "@/lib/realTown";
+import { fetchPlacesForJob, type JobPlace } from "@/lib/realTown";
+import { MOCK_JOBS } from "@/lib/mock";
 import { loadMe, type MeProfile } from "@/lib/me";
 
 function initMe(): MeProfile | null {
@@ -31,7 +32,7 @@ export default function JobRealPlaces({ jobCode, jobName }: { jobCode: string; j
     };
   }, [jobCode, me]);
 
-  const hint = JOB_PLACE_HINT[jobCode] ?? "관련 장소";
+  const hint = MOCK_JOBS.find((j) => j.code === jobCode)?.spot ?? "관련 장소";
 
   if (loading) {
     return (
