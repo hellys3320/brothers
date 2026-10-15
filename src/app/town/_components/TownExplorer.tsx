@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
-import { fetchRealFacilities, loadCached, saveCached, type RealSource } from "@/lib/realTown";
+import { fetchRealFacilities, loadCached, saveCached, type RealSource, type RealDebug } from "@/lib/realTown";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
 
@@ -47,6 +47,7 @@ export default function TownExplorer() {
   const [realMode, setRealMode] = useState<RealSource | null>(() => (init.real ? "overpass" : null));
   const [searching, setSearching] = useState(() => !init.real && init.profile !== null);
   const [failed, setFailed] = useState(false);
+  const [debug, setDebug] = useState<RealDebug | null>(null);
   const [found, setFound] = useState<string[]>(loadStamps);
   const [listMode, setListMode] = useState(false);
   const [cheer, setCheer] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export default function TownExplorer() {
         if (r) {
           setPlaces(r.items);
           setRealMode(r.via);
+          setDebug(r.debug);
           saveCached(me.lat, me.lng, r.items);
         } else {
           setFailed(true);
@@ -87,6 +89,7 @@ export default function TownExplorer() {
         if (r) {
           setPlaces(r.items);
           setRealMode(r.via);
+          setDebug(r.debug);
           saveCached(me.lat, me.lng, r.items);
         } else {
           setFailed(true);
@@ -151,6 +154,11 @@ export default function TownExplorer() {
           {listMode ? "🗺️ 지도로 보기" : "📋 목록으로 보기"}
         </button>
       </div>
+      {debug && (
+        <p className="text-center text-xs font-bold text-stone-400">
+          형님 점검: 카카오 {debug.kakao} · 서울 {debug.seoul} · OSM {debug.overpass} · 이름 {debug.nominatim}
+        </p>
+      )}
 
       {searching && <p className="rounded-2xl bg-white p-4 text-center font-black">🔍 {center.dong}의 진짜 도서관·공원을 찾는 중...</p>}
 

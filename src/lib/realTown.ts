@@ -284,17 +284,25 @@ async function viaNominatim(lat: number, lng: number, dong: string): Promise<Tow
   return out;
 }
 
+export interface RealDebug {
+  kakao: number;
+  seoul: number;
+  overpass: number;
+  nominatim: number;
+}
+
 export async function fetchRealFacilities(
   lat: number,
   lng: number,
   dong: string
-): Promise<{ items: TownFacility[]; via: RealSource } | null> {
+): Promise<{ items: TownFacility[]; via: RealSource; debug: RealDebug } | null> {
   const [kak, seo, over, nom] = await Promise.all([
     fetchViaKakao(lat, lng, dong),
     fetchViaSeoul(lat, lng, dong),
     viaOverpass(lat, lng, dong),
     viaNominatim(lat, lng, dong),
   ]);
+  const debug: RealDebug = { kakao: kak.length, seoul: seo.length, overpass: over.length, nominatim: nom.length };
   const merged = new Map<string, TownFacility>();
   for (const f of [...kak, ...seo, ...over, ...nom]) {
     const key = `${f.kind}:${f.name}`;
@@ -304,6 +312,7 @@ export async function fetchRealFacilities(
   return {
     items: applyCaps(lat, lng, [...merged.values()]),
     via: kak.length > 0 ? "kakao" : over.length > 0 ? "overpass" : seo.length > 0 ? "seoul" : "nominatim",
+    debug,
   };
 }
 
