@@ -59,7 +59,7 @@ async function fetchOverpass(q: string): Promise<Response | null> {
 }
 
 function cacheKey(lat: number, lng: number) {
-  return `brothers-poi-v3-${lat.toFixed(3)}-${lng.toFixed(3)}`;
+  return `brothers-poi-v4-${lat.toFixed(3)}-${lng.toFixed(3)}`;
 }
 
 function distM(lat1: number, lng1: number, lat2: number, lng2: number) {

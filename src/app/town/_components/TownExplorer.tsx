@@ -145,7 +145,15 @@ export default function TownExplorer() {
         </div>
       </div>
 
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={retry}
+          disabled={searching}
+          className="rounded-full bg-white px-5 py-2 font-black shadow disabled:opacity-50"
+        >
+          🔄 새로 찾기
+        </button>
         <button
           type="button"
           onClick={() => setListMode((v) => !v)}
