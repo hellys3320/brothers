@@ -1,6 +1,5 @@
 // 서울열린데이터광장 프록시 (키: SEOUL_API_KEY, 없으면 {ok:false})
 // 도서관(SeoulLibraryTimeInfo, 위경도 직접) + 주요공원(SearchParkInfoService, 위경도 직접)
-export const revalidate = 86400;
 
 const BASE = "http://openapi.seoul.go.kr:8088";
 
@@ -9,7 +8,7 @@ interface SeoulRow {
 }
 
 async function seoulRows(key: string, svc: string, s: number, e: number): Promise<{ total: number; rows: SeoulRow[] }> {
-  const res = await fetch(`${BASE}/${key}/json/${svc}/${s}/${e}`, { next: { revalidate: 86400 } });
+  const res = await fetch(`${BASE}/${key}/json/${svc}/${s}/${e}`);
   if (!res.ok) throw new Error(`seoul ${svc} ${res.status}`);
   const j = (await res.json()) as Record<string, { list_total_count: number; RESULT: { CODE: string }; row?: SeoulRow[] }>;
   const root = j[svc];
