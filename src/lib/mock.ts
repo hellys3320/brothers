@@ -1,4 +1,4 @@
-export type FacilityKind = "도서관" | "공원" | "학교" | "병원" | "안전지킴이집" | "주의길";
+export type FacilityKind = "도서관" | "공원" | "학교" | "빵집" | "병원" | "안전지킴이집" | "주의길";
 
 export interface TownFacility {
   id: string;
