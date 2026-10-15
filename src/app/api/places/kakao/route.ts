@@ -60,8 +60,8 @@ function toPlace(
   };
 }
 
-// 동네 지도용 한 번에 조회
-async function townPlaces(key: string, lat: number, lng: number, dong: string, radius: number): Promise<KakaoPlace[]> {
+// 동네 지도용 한 번에 조회 (extra면 2배씩 담아서 2라운드용)
+async function townPlaces(key: string, lat: number, lng: number, dong: string, radius: number, extra = false): Promise<KakaoPlace[]> {
   const x = String(lng);
   const y = String(lat);
   const R = String(Math.min(10000, Math.max(1000, radius)));
@@ -84,19 +84,20 @@ async function townPlaces(key: string, lat: number, lng: number, dong: string, r
     if (out.some((o) => o.name === p.name)) return;
     out.push(p);
   };
+  const N = (n: number) => (extra ? n * 2 : n);
 
-  bakeries.slice(0, 3).forEach((d) => push(toPlace(d, "빵집", "🍞"), 3, "빵집"));
-  libs.slice(0, 3).forEach((d) => push(toPlace(d, "도서관", "📚"), 3, "도서관"));
-  parks.slice(0, 4).forEach((d) => push(toPlace(d, "공원", "🌳"), 4, "공원"));
-  hospitals.slice(0, 3).forEach((d) => push(toPlace(d, "병원", "🏥"), 3, "병원"));
-  pharmacies.slice(0, 2).forEach((d) => push(toPlace(d, "병원", "💊"), 3, "병원"));
+  bakeries.slice(0, N(3)).forEach((d) => push(toPlace(d, "빵집", "🍞"), N(3), "빵집"));
+  libs.slice(0, N(3)).forEach((d) => push(toPlace(d, "도서관", "📚"), N(3), "도서관"));
+  parks.slice(0, N(4)).forEach((d) => push(toPlace(d, "공원", "🌳"), N(4), "공원"));
+  hospitals.slice(0, N(3)).forEach((d) => push(toPlace(d, "병원", "🏥"), N(3), "병원"));
+  pharmacies.slice(0, N(2)).forEach((d) => push(toPlace(d, "병원", "💊"), N(3), "병원"));
   schools
     .filter((d) => d.category_name.includes("초등") || d.place_name.includes("초등"))
-    .slice(0, 2)
-    .forEach((d) => push(toPlace(d, "학교", "🏫"), 2, "학교"));
-  cares.slice(0, 1).forEach((d) => push(toPlace(d, "학교", "🧸"), 2, "학교"));
-  fires.slice(0, 1).forEach((d) => push(toPlace(d, "안전지킴이집", "🛟"), 2, "안전지킴이집"));
-  polices.slice(0, 1).forEach((d) => push(toPlace(d, "안전지킴이집", "🛟"), 2, "안전지킴이집"));
+    .slice(0, N(2))
+    .forEach((d) => push(toPlace(d, "학교", "🏫"), N(2), "학교"));
+  cares.slice(0, N(1)).forEach((d) => push(toPlace(d, "학교", "🧸"), N(2), "학교"));
+  fires.slice(0, N(1)).forEach((d) => push(toPlace(d, "안전지킴이집", "🛟"), N(2), "안전지킴이집"));
+  polices.slice(0, N(1)).forEach((d) => push(toPlace(d, "안전지킴이집", "🛟"), N(2), "안전지킴이집"));
   return out;
 }
 
@@ -158,7 +159,7 @@ export async function GET(req: Request) {
   if (!isFinite(lat) || !isFinite(lng)) return Response.json({ ok: false, reason: "bad-coords" });
 
   try {
-    const items = job ? await jobPlaces(key, job, lat, lng, dong) : await townPlaces(key, lat, lng, dong, radius);
+    const items = job ? await jobPlaces(key, job, lat, lng, dong) : await townPlaces(key, lat, lng, dong, radius, radius >= 8000);
     return Response.json({ ok: true, count: items.length, items });
   } catch {
     return Response.json({ ok: false, reason: "fetch-fail" });
