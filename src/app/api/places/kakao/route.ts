@@ -61,6 +61,10 @@ function toPlace(
 }
 
 // 동네 지도용 한 번에 조회 (extra면 2배씩 담아서 2라운드용)
+function isRealBakery(d: { place_name: string; category_name: string }): boolean {
+  const t = `${d.place_name} ${d.category_name}`;
+  return /빵|베이커리|제과|브레드|도너츠|도넛/.test(t);
+}
 async function townPlaces(key: string, lat: number, lng: number, dong: string, radius: number, extra = false): Promise<KakaoPlace[]> {
   const x = String(lng);
   const y = String(lat);
@@ -86,7 +90,7 @@ async function townPlaces(key: string, lat: number, lng: number, dong: string, r
   };
   const N = (n: number) => (extra ? n * 2 : n);
 
-  bakeries.slice(0, N(3)).forEach((d) => push(toPlace(d, "빵집", "🍞"), N(3), "빵집"));
+  bakeries.filter(isRealBakery).slice(0, N(3)).forEach((d) => push(toPlace(d, "빵집", "🍞"), N(3), "빵집"));
   libs.slice(0, N(3)).forEach((d) => push(toPlace(d, "도서관", "📚"), N(3), "도서관"));
   parks.slice(0, N(4)).forEach((d) => push(toPlace(d, "공원", "🌳"), N(4), "공원"));
   hospitals.slice(0, N(3)).forEach((d) => push(toPlace(d, "병원", "🏥"), N(3), "병원"));
@@ -131,8 +135,9 @@ async function jobPlaces(
   }
   if (!card) return [];
   const docs = await kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} ${card.find}`, x, y, ...K, size: "8" });
+  const filtered = card.find === "빵집" ? docs.filter(isRealBakery) : docs;
   const stamp: Record<string, string> = { baker: "🍞", librarian: "📚", fire: "🛟", toon: "📖" };
-  return docs
+  return filtered
     .slice(0, 5)
     .map((d) => toPlace(d, "빵집", stamp[job] ?? "📍"))
     .filter((p): p is KakaoPlace => !!p);
