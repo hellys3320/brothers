@@ -62,6 +62,8 @@ function toPlace(
 
 // 동네 지도용 한 번에 조회 (extra면 2배씩 담아서 2라운드용)
 function isRealBakery(d: { place_name: string; category_name: string }): boolean {
+  // 이름이 아이스크림·빙수집인데 업종이 빵집으로 된 경우 제외 (예: 쿨아이스크림할인점)
+  if (/아이스크림|빙수|젤라또|소프트|슬러시/.test(d.place_name)) return false;
   const t = `${d.place_name} ${d.category_name}`;
   return /빵|베이커리|제과|브레드|도너츠|도넛/.test(t);
 }

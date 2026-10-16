@@ -75,7 +75,7 @@ async function fetchOverpass(q: string): Promise<Response | null> {
 }
 
 function cacheKey(lat: number, lng: number) {
-  return `brothers-poi-v5-${lat.toFixed(3)}-${lng.toFixed(3)}`;
+  return `brothers-poi-v6-${lat.toFixed(3)}-${lng.toFixed(3)}`;
 }
 
 export function distM(lat1: number, lng1: number, lat2: number, lng2: number) {
