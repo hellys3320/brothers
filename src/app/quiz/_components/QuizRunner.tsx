@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { MOCK_QUIZ } from "@/lib/mock";
+import { useEffect, useState } from "react";
+import { MOCK_QUIZ, getDailyQuiz, type QuizItem } from "@/lib/mock";
 import { speak } from "@/lib/speak";
 import { addXP } from "@/lib/xp";
 
@@ -15,14 +15,22 @@ function loadBest(): number {
 }
 
 export default function QuizRunner() {
+  // 오늘의 문제 (prerender엔 고정, 열리자마자 날짜 기준으로 교체)
+  const [quiz, setQuiz] = useState<QuizItem[]>(MOCK_QUIZ.slice(0, 5));
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [results, setResults] = useState<boolean[]>([]);
   const [picks, setPicks] = useState<number[]>([]);
   const [best, setBest] = useState<number>(loadBest);
+  const [xpNote, setXpNote] = useState("");
 
-  const q = MOCK_QUIZ[idx];
-  const done = results.length >= MOCK_QUIZ.length;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setQuiz(getDailyQuiz());
+  }, []);
+
+  const q = quiz[idx];
+  const done = results.length >= quiz.length;
   const score = results.filter(Boolean).length;
 
   function pick(i: number) {
@@ -40,7 +48,7 @@ export default function QuizRunner() {
     setResults(nextResults);
     setPicks([...picks, picked]);
     setPicked(null);
-    if (nextResults.length >= MOCK_QUIZ.length) {
+    if (nextResults.length >= quiz.length) {
       const s = nextResults.filter(Boolean).length;
       try {
         const prev = Number(localStorage.getItem("brothers-quiz-best") ?? "0");
@@ -48,8 +56,24 @@ export default function QuizRunner() {
         localStorage.setItem("brothers-quiz-best", String(nb));
         setBest(nb);
       } catch {}
-      addXP(s * 5, `퀴즈 ${s}개 정답!`);
-      speak(`끝! ${s}개 맞혔어! ${s * 5} XP 받았다!`);
+      // XP는 하루 1번만 (반복 풀기 farming 방지)
+      const today = new Date().toDateString();
+      let first = true;
+      try {
+        first = localStorage.getItem("brothers-quiz-xp-date") !== today;
+        if (first) localStorage.setItem("brothers-quiz-xp-date", today);
+      } catch {}
+      if (first && s > 0) {
+        addXP(s * 5, `퀴즈 ${s}개 정답!`);
+        setXpNote(`+${s * 5} XP 받았다!`);
+        speak(`끝! ${s}개 맞혔어! ${s * 5} XP 받았다!`);
+      } else if (s > 0) {
+        setXpNote("오늘 XP는 이미 받았어! 내일 또 받아!");
+        speak(`끝! ${s}개 맞혔어! XP는 내일 또 받자!`);
+      } else {
+        setXpNote("");
+        speak(`끝! 아쉬워! 다시 해보자!`);
+      }
     } else {
       setIdx(idx + 1);
     }
@@ -60,6 +84,18 @@ export default function QuizRunner() {
     setPicked(null);
     setResults([]);
     setPicks([]);
+    setXpNote("");
+  }
+
+  function otherQuiz() {
+    const rest = MOCK_QUIZ.filter((item) => !quiz.some((x) => x.id === item.id));
+    const shuffled = [...rest].sort(() => Math.random() - 0.5).slice(0, 5);
+    setQuiz(shuffled.length > 0 ? shuffled : getDailyQuiz());
+    setIdx(0);
+    setPicked(null);
+    setResults([]);
+    setPicks([]);
+    setXpNote("");
   }
 
   if (done) {
@@ -68,23 +104,29 @@ export default function QuizRunner() {
         <div className="rounded-3xl bg-white p-8 text-center shadow">
           <p className="text-4xl">🎉</p>
           <h2 className="text-3xl font-black">
-            끝! {MOCK_QUIZ.length}개 중 {score}개 맞혔어!
+            끝! {quiz.length}개 중 {score}개 맞혔어!
           </h2>
           <p className="mt-2 text-xl font-bold">{score >= 4 ? "칭호: 동네박사!" : score >= 2 ? "칭호: 탐험대원!" : "칭호: 탐험견습생!"}</p>
           <p className="mt-1 font-bold text-stone-500">역대 최고: {Math.max(best, score)}개</p>
-          <div className="mt-4 flex gap-2">
-            <button type="button" onClick={retry} className="flex-1 rounded-2xl bg-amber-400 px-6 py-3 text-xl font-black">
-              다시 하기
+          {xpNote && <p className="mt-1 text-xl font-black text-violet-700">{xpNote}</p>}
+          <div className="mt-4 flex flex-col gap-2">
+            <button type="button" onClick={otherQuiz} className="w-full rounded-2xl bg-emerald-400 px-6 py-3 text-xl font-black">
+              🎲 다른 문제 풀기!
             </button>
-            <a href="/town" className="flex-1 rounded-2xl bg-emerald-300 px-6 py-3 text-center text-xl font-black">
-              탐험하러 가기
-            </a>
+            <div className="flex gap-2">
+              <button type="button" onClick={retry} className="flex-1 rounded-2xl bg-amber-400 px-6 py-3 text-xl font-black">
+                다시 하기
+              </button>
+              <a href="/town" className="flex-1 rounded-2xl bg-emerald-300 px-6 py-3 text-center text-xl font-black">
+                탐험하러 가기
+              </a>
+            </div>
           </div>
         </div>
         <div className="rounded-3xl bg-white p-6 shadow">
           <h3 className="text-2xl font-black">📝 정답 확인!</h3>
           <ul className="mt-3 flex flex-col gap-3">
-            {MOCK_QUIZ.map((item, i) => {
+            {quiz.map((item, i) => {
               const mine = picks[i];
               const ok = results[i];
               return (
@@ -113,11 +155,11 @@ export default function QuizRunner() {
       <div className="h-4 overflow-hidden rounded-full bg-stone-200" aria-hidden>
         <div
           className="h-full rounded-full bg-amber-400 transition-all"
-          style={{ width: `${(results.length / MOCK_QUIZ.length) * 100}%` }}
+          style={{ width: `${(results.length / quiz.length) * 100}%` }}
         />
       </div>
       <p className="mt-2 font-black text-stone-500">
-        {idx + 1} / {MOCK_QUIZ.length} · 지금까지 {score}개 성공
+        {idx + 1} / {quiz.length} · 지금까지 {score}개 성공
       </p>
       <h2 className="mt-1 text-2xl font-black">{q.q}</h2>
       <button
@@ -158,7 +200,7 @@ export default function QuizRunner() {
             onClick={next}
             className="mt-3 w-full rounded-2xl bg-violet-400 px-4 py-3 text-xl font-black"
           >
-            {results.length + 1 >= MOCK_QUIZ.length ? "결과 보기!" : "다음 문제!"}
+            {results.length + 1 >= quiz.length ? "결과 보기!" : "다음 문제!"}
           </button>
         </div>
       )}
