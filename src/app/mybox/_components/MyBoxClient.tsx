@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { loadMyPlaces } from "@/lib/realTown";
-import { getXP, levelFor } from "@/lib/xp";
+import { getXP, getXPLog, levelFor } from "@/lib/xp";
+import { loadStampLog, clearStampLog } from "@/lib/stamps";
 import { MOCK_JOBS } from "@/lib/mock";
 import type { Dream } from "@/app/jobs/dream/_components/DreamMaker";
 import { speak } from "@/lib/speak";
@@ -28,14 +29,35 @@ function readStamps(): string[] {
   }
 }
 
+function readVisitedJobs(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("brothers-jobs-visited") ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+function dateStr(t: number): string {
+  try {
+    const d = new Date(t);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  } catch {
+    return "";
+  }
+}
+
 export default function MyBoxClient() {
   const [stamps, setStamps] = useState<string[]>(readStamps);
   const [myPlaces] = useState(loadMyPlaces);
+  const [stampLog, setStampLog] = useState(loadStampLog);
+  const [visitedJobs] = useState<string[]>(readVisitedJobs);
+  const [xpLog] = useState(getXPLog);
+  const [xp] = useState(() => getXP());
   const [diary, setDiary] = useState<string>(() => read("brothers-diary", ""));
   const [saved, setSaved] = useState<string>(() => read("brothers-diary", ""));
   const [mood, setMood] = useState<string>(() => read("brothers-mood", MOODS[0]));
   const [best] = useState<number>(() => Number(read("brothers-quiz-best", "0")));
-  const [xp] = useState(() => getXP());
   const [dream] = useState<Dream | null>(() => {
     try {
       const raw = localStorage.getItem("brothers-dream");
@@ -62,18 +84,19 @@ export default function MyBoxClient() {
       localStorage.removeItem("brothers-stamps");
       localStorage.removeItem("brothers-diary");
       localStorage.removeItem("brothers-mood");
+      clearStampLog();
       setStamps([]);
+      setStampLog([]);
       setSaved("");
       setDiary("");
     } catch {}
   }
 
-  const found = stamps.map((id) => {
-    const p = myPlaces.find((x) => x.id === id);
-    return p ?? { id, stamp: "🔖", name: "비밀 장소" };
-  });
   const myGot = stamps.filter((s) => myPlaces.some((p) => p.id === s)).length;
   const progress = myPlaces.length > 0 ? Math.round((myGot / myPlaces.length) * 100) : 0;
+  const jobCards = visitedJobs
+    .map((c) => MOCK_JOBS.find((j) => j.code === c))
+    .filter((j): j is (typeof MOCK_JOBS)[number] => !!j);
 
   return (
     <div className="flex flex-col gap-5">
@@ -82,8 +105,66 @@ export default function MyBoxClient() {
         <div className="mt-2 h-5 overflow-hidden rounded-full bg-stone-200">
           <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${progress}%` }} />
         </div>
-        <p className="mt-2 font-bold">퀴즈 최고 기록: {best}개 · 스탬프 {found.length}개</p>
+        <p className="mt-2 font-bold">퀴즈 최고 기록: {best}개 · 스탬프 {stamps.length}개 · 카드 {jobCards.length}장</p>
         <p className="font-black text-violet-700">🎖️ Lv.{levelFor(xp).lv} {levelFor(xp).name} ({xp} XP)</p>
+      </div>
+
+      <div className="rounded-3xl bg-white p-5 shadow">
+        <h2 className="text-2xl font-black">⚡ XP 히스토리</h2>
+        {xpLog.length === 0 ? (
+          <p className="mt-2 font-bold text-stone-500">아직 XP가 없어. 탐험·퀴즈·게임을 해봐!</p>
+        ) : (
+          <ul className="mt-2 flex max-h-56 flex-col gap-1 overflow-y-auto">
+            {xpLog.slice(0, 15).map((e, i) => (
+              <li key={`${e.t}-${i}`} className="rounded-xl bg-violet-50 px-3 py-1 font-bold">
+                +{e.n} · {e.why || "열심히 했어!"} <span className="text-stone-400">{dateStr(e.t)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-3xl bg-white p-5 shadow">
+        <h2 className="text-2xl font-black">💼 얻은 직업 카드 ({jobCards.length}장)</h2>
+        {jobCards.length === 0 ? (
+          <div>
+            <p className="mt-2 font-bold">아직 없어. 직업 도감에서 카드를 열어봐!</p>
+            <Link href="/jobs" className="mt-3 block rounded-2xl bg-sky-300 px-4 py-3 text-center text-xl font-black">
+              직업 도감 가기
+            </Link>
+          </div>
+        ) : (
+          <ul className="mt-3 grid grid-cols-2 gap-2">
+            {jobCards.map((j) => (
+              <li key={j.code}>
+                <Link href={`/jobs/${j.code}`} className="block rounded-2xl bg-sky-50 px-3 py-2 text-lg font-black">
+                  {j.emoji} {j.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-3xl bg-white p-5 shadow">
+        <h2 className="text-2xl font-black">🎒 얻은 장소 ({stampLog.length}곳)</h2>
+        {stampLog.length === 0 ? (
+          <div>
+            <p className="mt-2 font-bold">아직 비었어. 동네탐험에서 먼저 찾아봐!</p>
+            <Link href="/town" className="mt-3 block rounded-2xl bg-emerald-300 px-4 py-3 text-center text-xl font-black">
+              탐험하러 가기
+            </Link>
+          </div>
+        ) : (
+          <ul className="mt-3 grid grid-cols-1 gap-2">
+            {stampLog.map((s) => (
+              <li key={s.id} className="rounded-2xl bg-green-50 px-4 py-2 text-lg font-black">
+                {s.stamp} {s.name}
+                <span className="ml-2 text-sm font-bold text-stone-500">{s.dong} · {dateStr(s.at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {dream && dreamJob && (
@@ -96,26 +177,6 @@ export default function MyBoxClient() {
           </Link>
         </div>
       )}
-
-      <div className="rounded-3xl bg-white p-5 shadow">
-        <h2 className="text-2xl font-black">🎒 스탬프북 ({found.length}개)</h2>
-        {found.length === 0 ? (
-          <div>
-            <p className="mt-2 font-bold">아직 비었어. 동네탐험에서 먼저 찾아봐!</p>
-            <Link href="/town" className="mt-3 block rounded-2xl bg-emerald-300 px-4 py-3 text-center text-xl font-black">
-              탐험하러 가기
-            </Link>
-          </div>
-        ) : (
-          <ul className="mt-3 grid grid-cols-1 gap-2">
-            {found.map((f) => (
-              <li key={f.id} className="rounded-2xl bg-green-50 px-4 py-2 text-lg font-black">
-                {f.stamp} {f.name}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
       <div className="rounded-3xl bg-white p-5 shadow">
         <h2 className="text-2xl font-black">📝 탐험일지</h2>

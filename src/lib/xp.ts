@@ -24,15 +24,36 @@ export function getXP(): number {
   }
 }
 
-export function addXP(n: number): number {
+export interface XPEvent {
+  t: number;
+  n: number;
+  why: string;
+}
+
+const LOG_KEY = "brothers-xp-log";
+
+export function addXP(n: number, why = ""): number {
   if (typeof window === "undefined") return 0;
   try {
     const next = getXP() + n;
     localStorage.setItem(KEY, String(next));
+    const log = getXPLog();
+    log.unshift({ t: Date.now(), n, why });
+    localStorage.setItem(LOG_KEY, JSON.stringify(log.slice(0, 50)));
     window.dispatchEvent(new CustomEvent("brothers-xp", { detail: next }));
     return next;
   } catch {
     return getXP();
+  }
+}
+
+export function getXPLog(): XPEvent[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const v = JSON.parse(localStorage.getItem(LOG_KEY) ?? "[]") as XPEvent[];
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
   }
 }
 

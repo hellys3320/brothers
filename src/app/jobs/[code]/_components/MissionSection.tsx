@@ -39,7 +39,7 @@ export default function MissionSection({
     const next = done.map((d, k) => (k === i ? true : d));
     setDone(next);
     saveMissions(code, next);
-    addXP(10);
+    addXP(10, `${name} 미션!`);
     if (next.every(Boolean)) {
       speak(`대단해! 오늘부터 너는 1일 ${name}! 체험 완료!`);
     } else {

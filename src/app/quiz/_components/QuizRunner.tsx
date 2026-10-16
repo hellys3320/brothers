@@ -48,7 +48,7 @@ export default function QuizRunner() {
         localStorage.setItem("brothers-quiz-best", String(nb));
         setBest(nb);
       } catch {}
-      addXP(s * 5);
+      addXP(s * 5, `퀴즈 ${s}개 정답!`);
       speak(`끝! ${s}개 맞혔어! ${s * 5} XP 받았다!`);
     } else {
       setIdx(idx + 1);

@@ -38,7 +38,7 @@ export default function DreamMaker() {
       localStorage.setItem("brothers-dream", JSON.stringify(d));
     } catch {}
     setDream(d);
-    addXP(20);
+    addXP(20, "꿈 발표!");
     speak(`멋진 꿈이다! 20 XP 받았다! 20년 뒤의 ${MOCK_JOBS.find((j) => j.code === code)?.name}!`);
   }
 

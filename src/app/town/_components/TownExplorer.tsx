@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
 import { fetchRealFacilities, fetchMorePlaces, loadCached, saveCached, dirWord, distM, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
 import { addXP } from "@/lib/xp";
+import { logStamp } from "@/lib/stamps";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
 
@@ -182,7 +183,8 @@ export default function TownExplorer() {
     try {
       localStorage.setItem("brothers-stamps", JSON.stringify(next));
     } catch {}
-    addXP(10);
+    addXP(10, `${f.name} 발견!`);
+    logStamp(id, f.name, f.stamp, f.dong);
     const gotNow = next.filter((n) => places.some((p) => p.id === n)).length;
     speak(`${f.name} 도착! ${f.easy} 스탬프를 받았다! 수집함에 저장됐다!`);
     setCheer(`${f.stamp} ${f.name} 찾았다! (${gotNow}/${places.length})`);

@@ -65,7 +65,7 @@ function WhoGame() {
     if (i === round.answer) {
       setScore((s) => s + 1);
       setXpEarned((x) => x + 3);
-      addXP(3);
+      addXP(3, "게임 정답!");
       speak("맞았어! 3 XP 받았다!");
     } else {
       speak(`땡! 정답은 ${round.jobs[round.answer].name}!`);
@@ -189,7 +189,7 @@ function SosGame() {
     if (i === q.answer) {
       setScore((s) => s + 1);
       setXpEarned((x) => x + 3);
-      addXP(3);
+      addXP(3, "게임 정답!");
       speak("정답! 3 XP 받았다!");
     } else {
       speak(`아쉬워! 정답은 ${q.choices[q.answer]}!`);
@@ -304,7 +304,7 @@ function VsGame() {
   }, []);
 
   function choose(name: string) {
-    addXP(1);
+    addXP(1, "밸런스게임!");
     const next = n + 1;
     setN(next);
     const c = VS_COMMENTS[next % VS_COMMENTS.length];
