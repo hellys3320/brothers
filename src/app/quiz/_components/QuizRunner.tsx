@@ -265,13 +265,6 @@ export default function QuizRunner() {
         <span className="w-8 font-black">{Math.ceil(timeLeft)}</span>
       </div>
       <h2 className="mt-2 text-2xl font-black">{q.q}</h2>
-      <button
-        type="button"
-        onClick={() => speak(q.q)}
-        className="mt-2 rounded-full bg-stone-100 px-4 py-1 font-black"
-      >
-        🔊 문제 읽어주기
-      </button>
       <div className="mt-4 flex flex-col gap-3">
         {q.choices.map((c, i) => {
           const isAnswer = picked !== null && picked !== -1 && i === q.answer;
