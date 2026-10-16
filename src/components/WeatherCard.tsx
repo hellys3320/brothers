@@ -59,12 +59,21 @@ export default function WeatherCard() {
 
   if (!wx) return null;
 
+  const item = wx.temp >= 30 ? "🕶️" : wx.temp <= 3 ? "🧣" : wx.code >= 51 ? "☂️" : "🎀";
+
   return (
-    <div className="rounded-3xl bg-gradient-to-r from-sky-200 to-emerald-200 p-5 text-center shadow">
-      <p className="text-xl font-black">
-        {skyEmoji(wx.code)} 지금 {wx.temp}°C
-      </p>
-      <p className="text-lg font-bold">{advice(wx)}</p>
+    <div className="flex items-center gap-3 rounded-3xl bg-gradient-to-r from-sky-200 to-emerald-200 p-5 shadow">
+      <div className="animate-floaty text-center">
+        <p className="text-6xl">🧚</p>
+        <p className="text-2xl">{item}</p>
+        <p className="text-sm font-black">날씨요정 미리</p>
+      </div>
+      <div className="relative flex-1 rounded-2xl bg-white p-4 text-left shadow">
+        <p className="text-xl font-black">
+          {skyEmoji(wx.code)} 지금 {wx.temp}°C!
+        </p>
+        <p className="text-lg font-bold">{advice(wx)}</p>
+      </div>
     </div>
   );
 }
