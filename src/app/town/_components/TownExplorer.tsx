@@ -320,7 +320,7 @@ export default function TownExplorer() {
           focus={hasFocus ? focus : null}
           focusPlaceId={focusId}
           onFocusDone={() => setFocusId(null)}
-          mapApi={mapApi}
+          mapApiRef={mapApi}
         />
       )}
       {hasFocus && (

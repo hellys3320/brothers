@@ -15,7 +15,7 @@ interface Props {
   focus: { lat: number; lng: number; name: string } | null;
   focusPlaceId: string | null;
   onFocusDone: () => void;
-  mapApi: MutableRefObject<MapApi | null>;
+  mapApiRef: MutableRefObject<MapApi | null>;
 }
 
 export interface MapApi {
@@ -23,7 +23,7 @@ export interface MapApi {
   focusPlace: (id: string) => void;
 }
 
-export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focus, focusPlaceId, onFocusDone, mapApi }: Props) {
+export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focus, focusPlaceId, onFocusDone, mapApiRef }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Record<string, Marker>>({});
@@ -48,7 +48,7 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       void L;
       return true;
     }
-    mapApi.current = {
+    mapApiRef.current = {
       goHome() {
         const map = mapRef.current;
         if (!map) return;
@@ -270,11 +270,12 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
   // 목록에서 장소를 탭하면 지도 포커싱
   useEffect(() => {
     if (!focusPlaceId) return;
+    const id: string = focusPlaceId;
     let tries = 0;
     let stop = false;
     async function attempt() {
       const map = mapRef.current;
-      const m = markersRef.current[focusPlaceId];
+      const m = markersRef.current[id];
       if (map && m) {
         const p = m.getLatLng();
         map.flyTo(p, Math.max(map.getZoom(), 16), { duration: 0.8 });
