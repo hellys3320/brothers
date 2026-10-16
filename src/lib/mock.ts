@@ -195,7 +195,7 @@ export const MOCK_QUIZ: QuizItem[] = [
   { id: "q20", q: "수영장에서 제일 먼저?", choices: ["구명조끼 입기", "깊은 곳 먼저", "뛰어들기"], answer: 0, say: "맞아! 안전이 1등!" },
 ];
 
-// 날짜별 오늘의 퀴즈 5개 (매일 자정 바뀜, 온 나라는 같은 문제)
+// 날짜별 오늘의 퀴즈 10개 (매일 자정 바뀜, 온 나라는 같은 문제)
 export function getDailyQuiz(date = new Date()): QuizItem[] {
   const seed = date.getFullYear() * 372 + (date.getMonth() + 1) * 31 + date.getDate();
   let s = seed;
@@ -211,5 +211,19 @@ export function getDailyQuiz(date = new Date()): QuizItem[] {
     const k = Math.floor(rand() * (i + 1));
     [pool[i], pool[k]] = [pool[k], pool[i]];
   }
-  return pool.slice(0, 5);
+  return pool.slice(0, 10);
 }
+
+// 문제 → 동네 장소 연결 (퀴즈-탐험 미션용)
+export const QUIZ_PLACE: Record<string, "도서관" | "공원" | "학교" | "빵집" | "병원" | "안전지킴이집"> = {
+  q1: "안전지킴이집",
+  q3: "빵집",
+  q4: "도서관",
+  q6: "도서관",
+  q8: "안전지킴이집",
+  q9: "병원",
+  q11: "안전지킴이집",
+  q12: "안전지킴이집",
+  q16: "공원",
+  q17: "안전지킴이집",
+};

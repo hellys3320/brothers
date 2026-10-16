@@ -207,6 +207,19 @@ export default function TownExplorer() {
     } catch {}
     addXP(10, `${f.name} 발견!`);
     logStamp(id, f.name, f.stamp, f.dong);
+    // 퀴즈 동네 미션 보너스 (오늘 발급 + 해당 종류 첫 발견)
+    try {
+      const raw = localStorage.getItem("brothers-quest");
+      if (raw) {
+        const quest = JSON.parse(raw) as { date: string; kinds: string[]; done: boolean };
+        if (!quest.done && quest.date === new Date().toDateString() && quest.kinds.includes(f.kind)) {
+          quest.done = true;
+          localStorage.setItem("brothers-quest", JSON.stringify(quest));
+          addXP(5, "동네 미션 완료!");
+          setTimeout(() => speak("보너스! 동네 미션 완료! 5 XP 더 받았다!"), 2500);
+        }
+      }
+    } catch {}
     const gotNow = next.filter((n) => places.some((p) => p.id === n)).length;
     speak(`${f.name} 도착! ${f.easy} 스탬프를 받았다! 수집함에 저장됐다!`);
     setCheer(`${f.stamp} ${f.name} 찾았다! (${gotNow}/${places.length})`);

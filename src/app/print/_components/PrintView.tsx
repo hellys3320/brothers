@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MOCK_QUIZ, MOCK_JOBS } from "@/lib/mock";
+import { MOCK_JOBS } from "@/lib/mock";
 import { loadMyPlaces } from "@/lib/realTown";
 import { loadMe } from "@/lib/me";
 
@@ -72,8 +72,8 @@ export default function PrintView() {
         </ul>
       </div>
       <div className="rounded-2xl border-2 border-stone-200 p-4">
-        <h2 className="text-xl font-black">퀴즈 {best} / {MOCK_QUIZ.length} (최고 기록)</h2>
-        <p className="font-bold text-stone-500">도장: {best >= 4 ? "동네박사" : best >= 2 ? "탐험대원" : "탐험견습생"}</p>
+        <h2 className="text-xl font-black">퀴즈 최고 {best}개!</h2>
+        <p className="font-bold text-stone-500">도장: {best >= 8 ? "동네박사" : best >= 5 ? "탐험대원" : "탐험견습생"}</p>
       </div>
       <div className="rounded-2xl border-2 border-stone-200 p-4">
         <h2 className="text-xl font-black">탐험일지 {mood}</h2>
