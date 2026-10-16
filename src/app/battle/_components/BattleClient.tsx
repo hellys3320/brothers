@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { MOCK_JOBS } from "@/lib/mock";
 import { myCode } from "@/lib/friends";
 import { loadMe } from "@/lib/me";
@@ -164,7 +165,9 @@ function ResultView({ battle, myCode: me }: { battle: Battle; myCode: string }) 
   );
 }
 
-export default function BattleClient({ to }: { to: string | null }) {
+export default function BattleClient() {
+  const searchParams = useSearchParams();
+  const to = searchParams.get("to");
   const [tab, setTab] = useState<"online" | "local">("online");
   const [me] = useState(() => myCode());
   const [myName] = useState(() => loadMe()?.nickname ?? "탐험대원");
