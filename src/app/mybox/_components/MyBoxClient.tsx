@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { loadMyPlaces } from "@/lib/realTown";
 import { getXP, getXPLog, levelFor } from "@/lib/xp";
-import { loadStampLog, clearStampLog } from "@/lib/stamps";
+import { loadStampLog } from "@/lib/stamps";
 import { MOCK_JOBS } from "@/lib/mock";
 import type { Dream } from "@/app/jobs/dream/_components/DreamMaker";
 import { speak } from "@/lib/speak";
@@ -88,16 +88,23 @@ export default function MyBoxClient() {
   }
 
   function resetAll() {
+    // 게임 기록은 다 지우고 이름·집은 유지 (프로필 키 brothers-me 제외)
+    const keep = localStorage.getItem("brothers-me");
+    const keepCache: Record<string, string> = {};
     try {
-      localStorage.removeItem("brothers-stamps");
-      localStorage.removeItem("brothers-diary");
-      localStorage.removeItem("brothers-mood");
-      clearStampLog();
-      setStamps([]);
-      setStampLog([]);
-      setSaved("");
-      setDiary("");
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("brothers-poi-") && localStorage.getItem(k)) {
+          keepCache[k] = localStorage.getItem(k) as string;
+        }
+      }
     } catch {}
+    try {
+      localStorage.clear();
+      if (keep) localStorage.setItem("brothers-me", keep);
+      for (const [k, v] of Object.entries(keepCache)) localStorage.setItem(k, v);
+    } catch {}
+    window.location.reload();
   }
 
   const myGot = stamps.filter((s) => myPlaces.some((p) => p.id === s)).length;

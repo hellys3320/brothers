@@ -11,6 +11,7 @@ export default function PlacePhoto({ name, dong }: { name: string; dong: string 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [photos, setPhotos] = useState<Photo[] | null>(null);
+  const [note, setNote] = useState("");
   const [broken, setBroken] = useState(false);
 
   async function load() {
@@ -23,8 +24,15 @@ export default function PlacePhoto({ name, dong }: { name: string; dong: string 
     setLoading(true);
     try {
       const res = await fetch(`/api/places/photo?name=${encodeURIComponent(name)}&dong=${encodeURIComponent(dong)}`);
-      const j = (await res.json()) as { ok: boolean; items?: Photo[] };
-      setPhotos(j.ok && Array.isArray(j.items) ? j.items : []);
+      const j = (await res.json()) as { ok: boolean; reason?: string; items?: Photo[] };
+      if (j.ok && Array.isArray(j.items)) {
+        setPhotos(j.items);
+      } else if (j.reason === "no-key") {
+        setNote("사진은 준비중이야! (어른에게 부탁해!)");
+        setPhotos([]);
+      } else {
+        setPhotos([]);
+      }
     } catch {
       setPhotos([]);
     } finally {
@@ -45,7 +53,7 @@ export default function PlacePhoto({ name, dong }: { name: string; dong: string 
         <div className="mt-2 rounded-2xl bg-stone-100 p-2">
           {loading && <p className="p-3 text-center font-black">🔍 사진 찾는 중...</p>}
           {!loading && (!photos || photos.length === 0) && (
-            <p className="p-3 text-center font-bold text-stone-500">사진이 없어! 직접 가서 봐!</p>
+            <p className="p-3 text-center font-bold text-stone-500">{note || "사진이 없어! 직접 가서 봐!"}</p>
           )}
           {!loading && photos && photos.length > 0 && !broken && (
             <a href={photos[0].link} target="_blank" rel="noreferrer">

@@ -80,6 +80,24 @@ export default function Onboarding({ onDone }: { onDone: (me: MeProfile) => void
         >
           다음! →
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const me: MeProfile = {
+              nickname: nickname.trim() || "탐험대원",
+              avatar: DEFAULT_AVATAR,
+              dong: "서울 중구",
+              lat: 37.5665,
+              lng: 126.978,
+              label: "서울 시청 앞 (둘러보기)",
+            };
+            saveMe(me);
+            onDone(me);
+          }}
+          className="mt-2 w-full rounded-2xl bg-stone-100 px-4 py-2 font-black"
+        >
+          그냥 둘러보기
+        </button>
       </div>
     );
   }

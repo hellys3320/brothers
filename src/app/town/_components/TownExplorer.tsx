@@ -10,6 +10,7 @@ import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
 import { fetchRealFacilities, fetchMorePlaces, loadCached, saveCached, dirWord, distM, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
 import { addXP } from "@/lib/xp";
 import { logStamp } from "@/lib/stamps";
+import { todayQuest, saveQuest, type TownQuest } from "@/lib/quest";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
 
@@ -135,6 +136,7 @@ export default function TownExplorer() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreEmpty, setMoreEmpty] = useState(false);
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [questView, setQuestView] = useState<TownQuest | null>(() => todayQuest());
   const mapApi = useRef<MapApi | null>(null);
 
   // 내 동네면 진짜 장소로 교체 (캐시 우선, miss면 네트워크)
@@ -211,15 +213,13 @@ export default function TownExplorer() {
     logStamp(id, f.name, f.stamp, f.dong);
     // 퀴즈 동네 미션 보너스 (오늘 발급 + 해당 종류 첫 발견)
     try {
-      const raw = localStorage.getItem("brothers-quest");
-      if (raw) {
-        const quest = JSON.parse(raw) as { date: string; kinds: string[]; done: boolean };
-        if (!quest.done && quest.date === new Date().toDateString() && quest.kinds.includes(f.kind)) {
-          quest.done = true;
-          localStorage.setItem("brothers-quest", JSON.stringify(quest));
-          addXP(5, "동네 미션 완료!");
-          setTimeout(() => speak("보너스! 동네 미션 완료! 5 XP 더 받았다!"), 2500);
-        }
+      const q0 = todayQuest();
+      if (q0 && q0.kinds.includes(f.kind)) {
+        q0.done = true;
+        saveQuest(q0);
+        setQuestView(null);
+        addXP(5, "동네 미션 완료!");
+        setTimeout(() => speak("보너스! 동네 미션 완료! 5 XP 더 받았다!"), 2500);
       }
     } catch {}
     const gotNow = next.filter((n) => places.some((p) => p.id === n)).length;
@@ -260,6 +260,11 @@ export default function TownExplorer() {
         </div>
         <p className="mt-1 text-sm font-bold text-stone-500">핀을 누르면 스탬프가 수집함에 저장돼!</p>
       </div>
+      {questView && (
+        <div className="animate-pop rounded-3xl bg-gradient-to-r from-emerald-300 to-sky-300 p-4 text-center shadow">
+          <p className="text-xl font-black">🔍 오늘 미션: {questView.kinds.join("·")} 핀 찾기! (+5 XP)</p>
+        </div>
+      )}
       {places.length > 0 && gotCount >= places.length && (
         <div className="animate-pop rounded-3xl bg-gradient-to-r from-amber-300 to-pink-300 p-5 text-center shadow-lg">
           <p className="text-3xl font-black">🏆 다 찾았다! {center.dong} 박사!</p>

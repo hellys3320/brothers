@@ -1,6 +1,10 @@
 import HyungnimTalk from "@/components/HyungnimTalk";
 import MyBoxClient from "./_components/MyBoxClient";
 
+export const metadata = {
+  title: "나의 수집함 - 형님의 비밀기지",
+};
+
 export default function MyBoxPage() {
   return (
     <div className="flex flex-col gap-5">

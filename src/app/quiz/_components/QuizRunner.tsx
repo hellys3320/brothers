@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { MOCK_QUIZ, getDailyQuiz, QUIZ_PLACE, type QuizItem } from "@/lib/mock";
 import { speak } from "@/lib/speak";
 import { addXP } from "@/lib/xp";
+import { saveQuest, type TownQuest } from "@/lib/quest";
+
+const TIME_LIMIT = 5;
 
 function loadBest(): number {
   if (typeof window === "undefined") return 0;
@@ -13,30 +16,6 @@ function loadBest(): number {
     return 0;
   }
 }
-
-export interface TownQuest {
-  date: string;
-  kinds: string[];
-  done: boolean;
-}
-
-export function loadQuest(): TownQuest | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem("brothers-quest");
-    return raw ? (JSON.parse(raw) as TownQuest) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveQuest(q: TownQuest) {
-  try {
-    localStorage.setItem("brothers-quest", JSON.stringify(q));
-  } catch {}
-}
-
-const TIME_LIMIT = 5;
 
 export default function QuizRunner() {
   // 오늘의 문제 (prerender엔 고정, 열리자마자 날짜 기준으로 교체)

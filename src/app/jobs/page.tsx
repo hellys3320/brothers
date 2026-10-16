@@ -2,6 +2,10 @@ import Link from "next/link";
 import HyungnimTalk from "@/components/HyungnimTalk";
 import JobMatcher from "./_components/JobMatcher";
 
+export const metadata = {
+  title: "직업 도감 - 형님의 비밀기지",
+};
+
 export default function JobsPage() {
   return (
     <div className="flex flex-col gap-5">

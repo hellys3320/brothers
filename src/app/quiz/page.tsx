@@ -1,6 +1,10 @@
 import HyungnimTalk from "@/components/HyungnimTalk";
 import QuizRunner from "./_components/QuizRunner";
 
+export const metadata = {
+  title: "오늘의 비밀퀴즈 - 형님의 비밀기지",
+};
+
 export default function QuizPage() {
   return (
     <div className="flex flex-col gap-5">

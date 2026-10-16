@@ -4,6 +4,10 @@ import HyungnimTalk from "@/components/HyungnimTalk";
 import TownExplorer from "./_components/TownExplorer";
 import { MOCK_JOBS } from "@/lib/mock";
 
+export const metadata = {
+  title: "우리동네 비밀지도 - 형님의 비밀기지",
+};
+
 export default function TownPage() {
   return (
     <div className="flex flex-col gap-5">

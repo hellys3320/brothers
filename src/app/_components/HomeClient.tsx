@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Onboarding from "@/components/Onboarding";
 import LevelBadge from "@/components/LevelBadge";
+import WeatherCard from "@/components/WeatherCard";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { MOCK_JOBS } from "@/lib/mock";
+import { getDailyLetter } from "@/lib/letters";
 
 function todayJob() {
   const d = new Date();
@@ -16,11 +18,14 @@ function todayJob() {
 export default function HomeClient() {
   const [me, setMe] = useState<MeProfile | null>(() => loadMe());
   const [daily, setDaily] = useState(MOCK_JOBS[0]);
+  const [letter, setLetter] = useState("");
 
-  // 오늘 날짜 기준 직업은 기기에서 정함 (prerender엔 고정값)
+  // 오늘 날짜 기준 직업·편지는 기기에서 정함 (prerender엔 고정값)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDaily(todayJob());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLetter(getDailyLetter());
   }, []);
 
   if (!me) {
@@ -47,6 +52,13 @@ export default function HomeClient() {
       </div>
 
       <LevelBadge />
+
+      <WeatherCard />
+
+      <div className="rounded-3xl bg-amber-100 p-5 shadow">
+        <p className="font-black text-stone-500">💌 형님 우체통 (오늘의 편지)</p>
+        <p className="text-lg font-bold">{letter ? `“${letter}”` : "편지 오는 중..."}</p>
+      </div>
 
       <Link href={`/jobs/${daily.code}`} className="animate-floaty block rounded-3xl bg-violet-300 p-5 text-center shadow-lg">
         <p className="font-black text-stone-600">📅 오늘의 직업</p>
