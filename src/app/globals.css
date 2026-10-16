@@ -80,3 +80,32 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2.5px); }
 }
+
+/* 걷는 사람 v2: 관절 좌표 고정(view-box 기준) + 0.55초 보폭 */
+.w2-leg-f, .w2-leg-b, .w2-arm-f, .w2-arm-b {
+  transform-box: view-box;
+}
+.w2-leg-f { transform-origin: 29px 50px; animation: w2legF 0.55s ease-in-out infinite; }
+.w2-leg-b { transform-origin: 25px 50px; animation: w2legF 0.55s ease-in-out infinite reverse; }
+.w2-arm-f { transform-origin: 27px 32px; animation: w2armF 0.55s ease-in-out infinite reverse; }
+.w2-arm-b { transform-origin: 25px 32px; animation: w2armF 0.55s ease-in-out infinite; }
+.w2-upper { animation: w2bob 0.55s ease-in-out infinite; }
+.w2-puff-a, .w2-puff-b { transform-box: fill-box; transform-origin: center; }
+.w2-puff-a { animation: w2puff 0.55s ease-out infinite; }
+.w2-puff-b { animation: w2puff 0.55s ease-out infinite reverse; }
+@keyframes w2legF {
+  0%, 100% { transform: rotate(24deg); }
+  50% { transform: rotate(-24deg); }
+}
+@keyframes w2armF {
+  0%, 100% { transform: rotate(-17deg); }
+  50% { transform: rotate(17deg); }
+}
+@keyframes w2bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+@keyframes w2puff {
+  0% { transform: translate(-2px, 0) scale(0.5); opacity: 0.55; }
+  100% { transform: translate(-9px, -3px) scale(1.2); opacity: 0; }
+}

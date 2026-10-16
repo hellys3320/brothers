@@ -204,20 +204,37 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       const me = L.marker(path[0], {
         icon: L.divIcon({
           className: "",
-          html: `<div style="width:48px;height:62px;${walkEast ? "" : "transform:scaleX(-1);"}"}>
-            <svg width="48" height="62" viewBox="0 0 48 62">
-              <g class="w-bob">
-                <g class="w-arm-a"><rect x="13" y="24" width="6" height="15" rx="3" fill="#f59e0b"/></g>
-                <g class="w-leg-a"><rect x="19" y="38" width="7" height="18" rx="3.5" fill="#1e3a8a"/></g>
-                <rect x="15" y="20" width="18" height="20" rx="8" fill="#fbbf24"/>
-                <text x="24" y="17" font-size="17" text-anchor="middle">${face}</text>
-                <g class="w-leg-b"><rect x="27" y="38" width="7" height="18" rx="3.5" fill="#172554"/></g>
-                <g class="w-arm-b"><rect x="29" y="24" width="6" height="15" rx="3" fill="#f59e0b"/></g>
+          html: `<div style="width:56px;height:78px;${walkEast ? "" : "transform:scaleX(-1);"}"}>
+            <svg width="56" height="78" viewBox="0 0 56 78">
+              <circle class="w2-puff-a" cx="20" cy="70" r="3" fill="#d6c9a8"/>
+              <circle class="w2-puff-b" cx="34" cy="71" r="2.5" fill="#d6c9a8"/>
+              <g class="w2-leg-b">
+                <path d="M22 50 h6 l1 15 h-7 z" fill="#172554"/>
+                <ellipse cx="24" cy="68" rx="5.5" ry="3" fill="#111827"/>
+              </g>
+              <g class="w2-arm-b">
+                <rect x="22.5" y="32" width="5" height="14" rx="2.5" fill="#d97706"/>
+                <circle cx="25" cy="48" r="3" fill="#ffd9b3"/>
+              </g>
+              <rect x="12" y="31" width="9" height="15" rx="4.5" fill="#8b5cf6"/>
+              <rect x="14" y="36" width="5" height="6" rx="2.5" fill="#a78bfa"/>
+              <g class="w2-upper">
+                <rect x="21" y="30" width="15" height="21" rx="7" fill="#fbbf24"/>
+                <line x1="28.5" y1="32" x2="28.5" y2="49" stroke="#b45309" stroke-width="1.6"/>
+                <text x="28" y="22" font-size="20" text-anchor="middle">${face}</text>
+              </g>
+              <g class="w2-leg-f">
+                <path d="M26 50 h6 l1 15 h-7 z" fill="#1e3a8a"/>
+                <ellipse cx="29" cy="68" rx="5.5" ry="3" fill="#111827"/>
+              </g>
+              <g class="w2-arm-f">
+                <rect x="24.5" y="32" width="5" height="14" rx="2.5" fill="#f59e0b"/>
+                <circle cx="27" cy="48" r="3" fill="#ffd9b3"/>
               </g>
             </svg>
           </div>`,
-          iconSize: [48, 62],
-          iconAnchor: [24, 56],
+          iconSize: [56, 78],
+          iconAnchor: [28, 72],
         }),
         zIndexOffset: 1000,
       }).addTo(map);
