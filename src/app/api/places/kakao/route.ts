@@ -31,7 +31,7 @@ async function kakaoGet(key: string, path: string, params: Record<string, string
 export interface KakaoPlace {
   id: string;
   name: string;
-  kind: "도서관" | "공원" | "학교" | "빵집" | "병원" | "안전지킴이집";
+  kind: "도서관" | "공원" | "학교" | "빵집" | "간식" | "병원" | "안전지킴이집";
   stamp: string;
   easy: string;
   lat: number;
