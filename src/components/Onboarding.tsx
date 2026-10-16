@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { searchHome, reverseDong, saveMe, AVATARS, type MeProfile } from "@/lib/me";
+import { searchHome, reverseDong, saveMe, DEFAULT_AVATAR, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
 
 const HomePicker = dynamic(() => import("./HomePicker"), {
@@ -15,7 +15,6 @@ const QUICK = ["염창동", "잠실동", "해운대", "둔산동", "애월읍"];
 export default function Onboarding({ onDone }: { onDone: (me: MeProfile) => void }) {
   const [step, setStep] = useState(0);
   const [nickname, setNickname] = useState("");
-  const [avatar, setAvatar] = useState(AVATARS[0]);
   const [q, setQ] = useState("");
   const [cands, setCands] = useState<MeProfile[]>([]);
   const [busy, setBusy] = useState(false);
@@ -49,7 +48,7 @@ export default function Onboarding({ onDone }: { onDone: (me: MeProfile) => void
     const rev = await reverseDong(home.lat, home.lng, picked.dong);
     const me: MeProfile = {
       nickname: nickname.trim() || "탐험대원",
-      avatar,
+      avatar: DEFAULT_AVATAR,
       dong: rev.dong,
       lat: home.lat,
       lng: home.lng,
@@ -73,20 +72,6 @@ export default function Onboarding({ onDone }: { onDone: (me: MeProfile) => void
           maxLength={10}
           className="mt-4 w-full rounded-2xl border-4 border-amber-300 p-4 text-center text-2xl font-black"
         />
-        <p className="mt-4 text-xl font-bold">너의 아바타를 골라봐!</p>
-        <div className="mt-2 grid grid-cols-6 gap-2">
-          {AVATARS.map((a) => (
-            <button
-              key={a}
-              type="button"
-              onClick={() => setAvatar(a)}
-              aria-pressed={avatar === a}
-              className={`rounded-2xl p-2 text-4xl ${avatar === a ? "bg-amber-300" : "bg-stone-100"}`}
-            >
-              {a}
-            </button>
-          ))}
-        </div>
         <button
           type="button"
           disabled={!nickname.trim()}

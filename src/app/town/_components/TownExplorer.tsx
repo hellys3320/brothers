@@ -329,7 +329,6 @@ export default function TownExplorer() {
           focusPlaceId={focusId}
           onFocusDone={() => setFocusId(null)}
           mapApiRef={mapApi}
-          avatar={me?.avatar ?? "🕵️"}
         />
       )}
       {hasFocus && (
@@ -339,7 +338,7 @@ export default function TownExplorer() {
       )}
       {travel && (
         <p className="animate-floaty rounded-2xl bg-sky-200 p-4 text-center text-xl font-black">
-          {me?.avatar ?? "🕵️"} 형님이 {travel.name}으로 가는 중... 따라와!
+          탐험가가 {travel.name}으로 가는 중... 따라와!
         </p>
       )}
 

@@ -2,8 +2,12 @@
 
 import { useEffect, useRef, type MutableRefObject } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
+import lottie, { type AnimationItem } from "lottie-web";
 import type { TownFacility } from "@/lib/mock";
 import "leaflet/dist/leaflet.css";
+
+// 걷기 캐릭터: LottieFiles 무료 "Character Walk Cycle" (디자이너 제작 벡터)
+// 파일: public/animations/walk.json
 
 interface Props {
   found: string[];
@@ -16,7 +20,6 @@ interface Props {
   focusPlaceId: string | null;
   onFocusDone: () => void;
   mapApiRef: MutableRefObject<MapApi | null>;
-  avatar: string;
 }
 
 export interface MapApi {
@@ -24,15 +27,15 @@ export interface MapApi {
   focusPlace: (id: string) => void;
 }
 
-export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focus, focusPlaceId, onFocusDone, mapApiRef, avatar }: Props) {
+export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focus, focusPlaceId, onFocusDone, mapApiRef }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Record<string, Marker>>({});
   const homeRef = useRef<Marker | null>(null);
-  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive, focus, avatar });
+  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive, focus });
 
   useEffect(() => {
-    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focus, avatar };
+    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focus };
   });
 
   // 우리집 바로가기 + 장소 포커싱 API
@@ -159,15 +162,19 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
     refresh();
   }, [found]);
 
-  // 탐험 출발: 형님이 🏠에서 핀까지 진짜 길 따라 걸어감 (OSRM 도보 경로, 실패시 직선)
+  // 탐험 출발: Lottie 걷기 캐릭터가 🏠에서 핀까지 진짜 길 따라 걸어감
   const expId = expedition?.id ?? null;
   useEffect(() => {
     if (!expId) return;
     const id: string = expId;
     let raf = 0;
     let done = false;
+    let anim: AnimationItem | null = null;
     async function walk() {
-      const L = (await import("leaflet")).default;
+      const [{ default: L }, walkRes] = await Promise.all([
+        import("leaflet"),
+        fetch("/animations/walk.json").then((r) => r.json()),
+      ]);
       const map = mapRef.current;
       const st = stateRef.current;
       const target = st.facilities.find((f) => f.id === id);
@@ -197,47 +204,23 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       } catch {
         // 직선 폴백
       }
+      if (done) return;
       const line = L.polyline(path, { dashArray: "8 8", color: "#f59e0b", weight: 5 }).addTo(map);
       map.flyToBounds(line.getBounds().pad(0.25), { duration: 0.8 });
       const walkEast = target.lng >= from.lng;
-      const face = stateRef.current.avatar;
       const me = L.marker(path[0], {
         icon: L.divIcon({
           className: "",
-          html: `<div style="width:56px;height:78px;${walkEast ? "" : "transform:scaleX(-1);"}"}>
-            <svg width="56" height="78" viewBox="0 0 56 78">
-              <circle class="w2-puff-a" cx="20" cy="70" r="3" fill="#d6c9a8"/>
-              <circle class="w2-puff-b" cx="34" cy="71" r="2.5" fill="#d6c9a8"/>
-              <g class="w2-leg-b">
-                <path d="M22 50 h6 l1 15 h-7 z" fill="#172554"/>
-                <ellipse cx="24" cy="68" rx="5.5" ry="3" fill="#111827"/>
-              </g>
-              <g class="w2-arm-b">
-                <rect x="22.5" y="32" width="5" height="14" rx="2.5" fill="#d97706"/>
-                <circle cx="25" cy="48" r="3" fill="#ffd9b3"/>
-              </g>
-              <rect x="12" y="31" width="9" height="15" rx="4.5" fill="#8b5cf6"/>
-              <rect x="14" y="36" width="5" height="6" rx="2.5" fill="#a78bfa"/>
-              <g class="w2-upper">
-                <rect x="21" y="30" width="15" height="21" rx="7" fill="#fbbf24"/>
-                <line x1="28.5" y1="32" x2="28.5" y2="49" stroke="#b45309" stroke-width="1.6"/>
-                <text x="28" y="22" font-size="20" text-anchor="middle">${face}</text>
-              </g>
-              <g class="w2-leg-f">
-                <path d="M26 50 h6 l1 15 h-7 z" fill="#1e3a8a"/>
-                <ellipse cx="29" cy="68" rx="5.5" ry="3" fill="#111827"/>
-              </g>
-              <g class="w2-arm-f">
-                <rect x="24.5" y="32" width="5" height="14" rx="2.5" fill="#f59e0b"/>
-                <circle cx="27" cy="48" r="3" fill="#ffd9b3"/>
-              </g>
-            </svg>
-          </div>`,
-          iconSize: [56, 78],
-          iconAnchor: [28, 72],
+          html: `<div class="walker-lottie" style="width:64px;height:64px;${walkEast ? "" : "transform:scaleX(-1);" }"></div>`,
+          iconSize: [64, 64],
+          iconAnchor: [32, 58],
         }),
         zIndexOffset: 1000,
       }).addTo(map);
+      const box = me.getElement()?.querySelector(".walker-lottie") as HTMLElement | null;
+      if (box) {
+        anim = lottie.loadAnimation({ container: box, renderer: "svg", loop: true, autoplay: true, animationData: walkRes });
+      }
       // 구간 길이 누적 → 일정한 속도로 걷기
       const seg: number[] = [0];
       for (let i = 1; i < path.length; i++) {
@@ -264,6 +247,8 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
           raf = requestAnimationFrame(step);
         } else if (!done) {
           done = true;
+          anim?.destroy();
+          anim = null;
           me.remove();
           line.remove();
           stateRef.current.onArrive(id);
@@ -275,6 +260,8 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
     return () => {
       cancelAnimationFrame(raf);
       done = true;
+      anim?.destroy();
+      anim = null;
     };
   }, [expId]);
 
