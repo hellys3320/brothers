@@ -57,3 +57,26 @@ body {
 .animate-pop { animation: pop 0.35s ease-out; }
 .animate-wiggle { animation: wiggle 2.5s ease-in-out infinite; }
 .animate-floaty { animation: floaty 3s ease-in-out infinite; }
+
+/* 걷는 형님: SVG 팔다리 (transform-box로 관절 기준 회전) */
+.w-leg-a, .w-leg-b, .w-arm-a, .w-arm-b {
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+.w-leg-a { animation: legSwing 0.36s ease-in-out infinite; }
+.w-leg-b { animation: legSwing 0.36s ease-in-out infinite reverse; }
+.w-arm-a { animation: armSwing 0.36s ease-in-out infinite reverse; }
+.w-arm-b { animation: armSwing 0.36s ease-in-out infinite; }
+.w-bob { animation: bob 0.36s ease-in-out infinite; }
+@keyframes legSwing {
+  0%, 100% { transform: rotate(24deg); }
+  50% { transform: rotate(-24deg); }
+}
+@keyframes armSwing {
+  0%, 100% { transform: rotate(18deg); }
+  50% { transform: rotate(-18deg); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2.5px); }
+}

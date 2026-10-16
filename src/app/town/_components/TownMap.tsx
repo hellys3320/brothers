@@ -199,8 +199,26 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       }
       const line = L.polyline(path, { dashArray: "8 8", color: "#f59e0b", weight: 5 }).addTo(map);
       map.flyToBounds(line.getBounds().pad(0.25), { duration: 0.8 });
+      const walkEast = target.lng >= from.lng;
+      const face = stateRef.current.avatar;
       const me = L.marker(path[0], {
-        icon: L.divIcon({ className: "", html: `<div style="font-size:42px">${stateRef.current.avatar}</div>`, iconSize: [46, 46], iconAnchor: [23, 23] }),
+        icon: L.divIcon({
+          className: "",
+          html: `<div style="width:48px;height:62px;${walkEast ? "" : "transform:scaleX(-1);"}"}>
+            <svg width="48" height="62" viewBox="0 0 48 62">
+              <g class="w-bob">
+                <g class="w-arm-a"><rect x="13" y="24" width="6" height="15" rx="3" fill="#f59e0b"/></g>
+                <g class="w-leg-a"><rect x="19" y="38" width="7" height="18" rx="3.5" fill="#1e3a8a"/></g>
+                <rect x="15" y="20" width="18" height="20" rx="8" fill="#fbbf24"/>
+                <text x="24" y="17" font-size="17" text-anchor="middle">${face}</text>
+                <g class="w-leg-b"><rect x="27" y="38" width="7" height="18" rx="3.5" fill="#172554"/></g>
+                <g class="w-arm-b"><rect x="29" y="24" width="6" height="15" rx="3" fill="#f59e0b"/></g>
+              </g>
+            </svg>
+          </div>`,
+          iconSize: [48, 62],
+          iconAnchor: [24, 56],
+        }),
         zIndexOffset: 1000,
       }).addTo(map);
       // 구간 길이 누적 → 일정한 속도로 걷기
