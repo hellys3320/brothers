@@ -298,7 +298,7 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
 
   return (
     <div>
-      <div ref={divRef} className="h-[340px] w-full rounded-3xl border-4 border-white shadow" role="application" aria-label={`${center.dong} 비밀지도`} />
+      <div ref={divRef} id="town-map" className="h-[340px] w-full scroll-mt-24 rounded-3xl border-4 border-white shadow" role="application" aria-label={`${center.dong} 비밀지도`} />
       <p className="mt-2 text-sm font-bold text-stone-500">📍 {center.dong} 중심! 🏠에서 출발해 핀을 눌러봐. 위치추적은 안 해요. 🏠가 우리집이 아니면 홈에서 동네를 다시 정해줘!</p>
     </div>
   );

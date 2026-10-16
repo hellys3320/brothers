@@ -168,8 +168,19 @@ export default function TownExplorer() {
   function focusCard(id: string) {
     if (listMode) setListMode(false);
     setFocusId(id);
-    // 지도가 이미 켜져 있으면 바로 포커싱
-    setTimeout(() => mapApi.current?.focusPlace(id), 100);
+    // 지도가 켜지길 기다렸다가 스크롤 + 포커싱
+    setTimeout(() => {
+      document.getElementById("town-map")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      mapApi.current?.focusPlace(id);
+    }, 700);
+  }
+
+  function goHome() {
+    if (listMode) setListMode(false);
+    setTimeout(() => {
+      document.getElementById("town-map")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      mapApi.current?.goHome();
+    }, 700);
   }
 
   function discover(id: string) {
@@ -257,10 +268,7 @@ export default function TownExplorer() {
       <div className="flex flex-wrap items-center justify-end gap-2">
         <button
           type="button"
-          onClick={() => {
-            if (listMode) setListMode(false);
-            mapApi.current?.goHome();
-          }}
+          onClick={goHome}
           className="rounded-full bg-white px-5 py-2 font-black shadow"
         >
           🏠 우리집
