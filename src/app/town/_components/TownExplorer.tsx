@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import type { MapApi } from "./TownMap";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
 import { fetchRealFacilities, fetchMorePlaces, loadCached, saveCached, dirWord, distM, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
 import { addXP } from "@/lib/xp";
@@ -131,6 +132,8 @@ export default function TownExplorer() {
   const [travel, setTravel] = useState<TownFacility | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreEmpty, setMoreEmpty] = useState(false);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const mapApi = useRef<MapApi | null>(null);
 
   // 내 동네면 진짜 장소로 교체 (캐시 우선, miss면 네트워크)
   useEffect(() => {
@@ -161,6 +164,13 @@ export default function TownExplorer() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function focusCard(id: string) {
+    if (listMode) setListMode(false);
+    setFocusId(id);
+    // 지도가 이미 켜져 있으면 바로 포커싱
+    setTimeout(() => mapApi.current?.focusPlace(id), 100);
+  }
 
   function discover(id: string) {
     const f = places.find((x) => x.id === id);
@@ -244,7 +254,17 @@ export default function TownExplorer() {
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (listMode) setListMode(false);
+            mapApi.current?.goHome();
+          }}
+          className="rounded-full bg-white px-5 py-2 font-black shadow"
+        >
+          🏠 우리집
+        </button>
         <button
           type="button"
           onClick={retry}
@@ -298,6 +318,9 @@ export default function TownExplorer() {
           expedition={travel ? { lat: travel.lat, lng: travel.lng, id: travel.id } : null}
           onArrive={onArrive}
           focus={hasFocus ? focus : null}
+          focusPlaceId={focusId}
+          onFocusDone={() => setFocusId(null)}
+          mapApi={mapApi}
         />
       )}
       {hasFocus && (
@@ -327,7 +350,14 @@ export default function TownExplorer() {
               <span className={`inline-block rounded-full px-3 py-1 font-black ${KIND_COLOR[f.kind]}`}>
                 {f.stamp} {f.kind}
               </span>
-              <h3 className="mt-2 text-2xl font-black">{f.name}</h3>
+              <button
+                type="button"
+                onClick={() => focusCard(f.id)}
+                className="mt-2 block w-full text-left text-2xl font-black hover:underline"
+                aria-label={`${f.name} 지도에서 보기`}
+              >
+                {f.name} <span className="text-base text-sky-700">🗺️</span>
+              </button>
               <p className="font-bold text-stone-700">{f.easy}</p>
               {!got && <p className="mt-1 font-black text-sky-700">{hint}</p>}
               <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MutableRefObject } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
 import type { TownFacility } from "@/lib/mock";
 import "leaflet/dist/leaflet.css";
@@ -13,16 +13,53 @@ interface Props {
   expedition: { lat: number; lng: number; id: string } | null;
   onArrive: (id: string) => void;
   focus: { lat: number; lng: number; name: string } | null;
+  focusPlaceId: string | null;
+  onFocusDone: () => void;
+  mapApi: MutableRefObject<MapApi | null>;
 }
 
-export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focus }: Props) {
+export interface MapApi {
+  goHome: () => void;
+  focusPlace: (id: string) => void;
+}
+
+export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focus, focusPlaceId, onFocusDone, mapApi }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Record<string, Marker>>({});
+  const homeRef = useRef<Marker | null>(null);
   const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive, focus });
 
   useEffect(() => {
     stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focus };
+  });
+
+  // 우리집 바로가기 + 장소 포커싱 API
+  useEffect(() => {
+    async function focusMarker(id: string) {
+      const L = (await import("leaflet")).default;
+      const map = mapRef.current;
+      if (!map) return false;
+      const m = markersRef.current[id];
+      if (!m) return false;
+      const p = m.getLatLng();
+      map.flyTo(p, Math.max(map.getZoom(), 16), { duration: 0.8 });
+      setTimeout(() => m.openPopup(), 850);
+      void L;
+      return true;
+    }
+    mapApi.current = {
+      goHome() {
+        const map = mapRef.current;
+        if (!map) return;
+        const c = stateRef.current.center;
+        map.flyTo([c.lat, c.lng], 15, { duration: 0.8 });
+        setTimeout(() => homeRef.current?.openPopup(), 850);
+      },
+      focusPlace(id: string) {
+        void focusMarker(id);
+      },
+    };
   });
 
   useEffect(() => {
@@ -41,7 +78,7 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
         attribution: "&copy; OpenStreetMap",
       }).addTo(map);
 
-      L.marker([c.lat, c.lng], {
+      const home = L.marker([c.lat, c.lng], {
         icon: L.divIcon({
           className: "",
           html: `<div style="font-size:36px">🏠</div>`,
@@ -51,6 +88,7 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       })
         .addTo(map)
         .bindPopup(`<b>우리집( ${c.dong} )</b><br/>여기서 출발!`);
+      homeRef.current = home;
 
       for (const f of facs) {
         const m = L.marker([f.lat, f.lng], {
@@ -228,6 +266,34 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
     }
     show();
   }, [focusKey]);
+
+  // 목록에서 장소를 탭하면 지도 포커싱
+  useEffect(() => {
+    if (!focusPlaceId) return;
+    let tries = 0;
+    let stop = false;
+    async function attempt() {
+      const map = mapRef.current;
+      const m = markersRef.current[focusPlaceId];
+      if (map && m) {
+        const p = m.getLatLng();
+        map.flyTo(p, Math.max(map.getZoom(), 16), { duration: 0.8 });
+        setTimeout(() => {
+          if (!stop) m.openPopup();
+        }, 850);
+        onFocusDone();
+        return;
+      }
+      tries++;
+      if (!stop && tries < 10) setTimeout(attempt, 400);
+      else onFocusDone();
+    }
+    attempt();
+    return () => {
+      stop = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusPlaceId]);
 
   return (
     <div>
