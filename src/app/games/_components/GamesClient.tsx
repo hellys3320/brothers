@@ -16,8 +16,6 @@ const SOS: Array<{ s: string; choices: string[]; answer: number }> = [
   { s: "책을 빌리고 싶어!", choices: ["사서", "경찰관", "요리사", "군인"], answer: 0 },
 ];
 
-const VS_COMMENTS = ["좋은 선택!", "형님도 그거!", "오호, 그 마음 알지!", "멋지다!"];
-
 function pick<T>(arr: T[], n: number): T[] {
   const c = [...arr];
   const out: T[] = [];
@@ -294,35 +292,79 @@ function SosGame() {
 }
 
 function VsGame() {
-  const [pair, setPair] = useState(() => [MOCK_JOBS[0], MOCK_JOBS[1]]);
-  const [msg, setMsg] = useState("");
-  const [n, setN] = useState(0);
+  const [entrants, setEntrants] = useState(() => MOCK_JOBS.slice(0, 8));
+  const [matchIdx, setMatchIdx] = useState(0);
+  const [winners, setWinners] = useState<typeof MOCK_JOBS>([]);
+  const [champion, setChampion] = useState<(typeof MOCK_JOBS)[number] | null>(null);
 
+  // prerender엔 고정, 열리자마자 섞음
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPair(pick(MOCK_JOBS, 2));
+    setEntrants(pick(MOCK_JOBS, 8));
   }, []);
 
-  function choose(name: string) {
-    addXP(1, "밸런스게임!");
-    const next = n + 1;
-    setN(next);
-    const c = VS_COMMENTS[next % VS_COMMENTS.length];
-    setMsg(`${name}! ${c}`);
-    speak(`${name}! ${c}`);
-    setPair(pick(MOCK_JOBS, 2));
+  const roundSize = entrants.length;
+  const roundName = roundSize === 8 ? "8강" : roundSize === 4 ? "4강" : "결승!";
+  const pair = [entrants[matchIdx * 2], entrants[matchIdx * 2 + 1]].filter(Boolean);
+
+  function choose(winner: (typeof MOCK_JOBS)[number]) {
+    speak(`${winner.name}! 다음!`);
+    const nextWinners = [...winners, winner];
+    const lastMatch = matchIdx * 2 + 2 >= entrants.length;
+    if (lastMatch) {
+      if (nextWinners.length === 1) {
+        setChampion(nextWinners[0]);
+        addXP(5, "밸런스게임 우승!");
+        speak(`우승! ${nextWinners[0].name}! 5 XP 받았다!`);
+      } else {
+        setEntrants(nextWinners);
+        setMatchIdx(0);
+        setWinners([]);
+      }
+    } else {
+      setWinners(nextWinners);
+      setMatchIdx(matchIdx + 1);
+    }
+  }
+
+  function restart() {
+    setEntrants(pick(MOCK_JOBS, 8));
+    setMatchIdx(0);
+    setWinners([]);
+    setChampion(null);
+  }
+
+  if (champion) {
+    return (
+      <div className="animate-pop rounded-3xl bg-gradient-to-b from-amber-200 to-pink-200 p-8 text-center shadow">
+        <p className="text-4xl">🏆</p>
+        <p className="text-7xl">{champion.emoji}</p>
+        <h2 className="mt-2 text-3xl font-black">우승! {champion.name}!</h2>
+        <p className="mt-1 text-xl font-black text-violet-700">+5 XP 받았다!</p>
+        <div className="mt-4 flex gap-2">
+          <button type="button" onClick={restart} className="flex-1 rounded-2xl bg-white px-4 py-3 text-xl font-black shadow">
+            다시 하기!
+          </button>
+          <a href={`/jobs/${champion.code}`} className="flex-1 rounded-2xl bg-amber-400 px-4 py-3 text-center text-xl font-black shadow">
+            직업 보러 가기!
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="rounded-3xl bg-white p-6 text-center shadow">
-      <p className="font-black text-stone-500">{n}번 골랐어! · 고를 때마다 +1 XP!</p>
+      <p className="font-black text-stone-500">
+        {roundName} · {matchIdx + 1}번째 대결! · 이기면 +5 XP는 결승에서!
+      </p>
       <h2 className="mt-1 text-2xl font-black">너라면? 둘 중 하나!</h2>
       <div className="mt-4 grid grid-cols-2 gap-3">
         {pair.map((j) => (
           <button
             key={j.code}
             type="button"
-            onClick={() => choose(j.name)}
+            onClick={() => choose(j)}
             className="rounded-3xl bg-gradient-to-b from-pink-200 to-amber-200 p-6 shadow"
           >
             <span className="text-6xl">{j.emoji}</span>
@@ -330,7 +372,6 @@ function VsGame() {
           </button>
         ))}
       </div>
-      {msg && <p className="animate-pop mt-3 text-xl font-black">{msg}</p>}
     </div>
   );
 }
