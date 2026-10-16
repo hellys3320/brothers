@@ -94,6 +94,15 @@ export default function MyBoxClient() {
 
   const myGot = stamps.filter((s) => myPlaces.some((p) => p.id === s)).length;
   const progress = myPlaces.length > 0 ? Math.round((myGot / myPlaces.length) * 100) : 0;
+  // 예전 도장(이름 기록 전)은 저장된 장소에서 이름 찾아주기
+  const legacy = stamps
+    .filter((id) => !stampLog.some((s) => s.id === id))
+    .map((id) => {
+      const p = myPlaces.find((x) => x.id === id);
+      return p ? { id, name: p.name, stamp: p.stamp, dong: p.dong, at: 0 } : null;
+    })
+    .filter((s): s is { id: string; name: string; stamp: string; dong: string; at: number } => !!s);
+  const allStamps = [...stampLog, ...legacy];
   const jobCards = visitedJobs
     .map((c) => MOCK_JOBS.find((j) => j.code === c))
     .filter((j): j is (typeof MOCK_JOBS)[number] => !!j);
@@ -147,8 +156,8 @@ export default function MyBoxClient() {
       </div>
 
       <div className="rounded-3xl bg-white p-5 shadow">
-        <h2 className="text-2xl font-black">🎒 얻은 장소 ({stampLog.length}곳)</h2>
-        {stampLog.length === 0 ? (
+        <h2 className="text-2xl font-black">🎒 얻은 장소 ({allStamps.length}곳)</h2>
+        {allStamps.length === 0 ? (
           <div>
             <p className="mt-2 font-bold">아직 비었어. 동네탐험에서 먼저 찾아봐!</p>
             <Link href="/town" className="mt-3 block rounded-2xl bg-emerald-300 px-4 py-3 text-center text-xl font-black">
@@ -157,10 +166,10 @@ export default function MyBoxClient() {
           </div>
         ) : (
           <ul className="mt-3 grid grid-cols-1 gap-2">
-            {stampLog.map((s) => (
+            {allStamps.map((s) => (
               <li key={s.id} className="rounded-2xl bg-green-50 px-4 py-2 text-lg font-black">
                 {s.stamp} {s.name}
-                <span className="ml-2 text-sm font-bold text-stone-500">{s.dong} · {dateStr(s.at)}</span>
+                <span className="ml-2 text-sm font-bold text-stone-500">{s.dong}{s.at > 0 ? ` · ${dateStr(s.at)}` : ""}</span>
               </li>
             ))}
           </ul>
