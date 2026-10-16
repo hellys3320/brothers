@@ -7,7 +7,9 @@ import LevelBadge from "@/components/LevelBadge";
 import WeatherCard from "@/components/WeatherCard";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { MOCK_JOBS } from "@/lib/mock";
-import { getDailyLetter } from "@/lib/letters";
+import { addXP } from "@/lib/xp";
+import { speak } from "@/lib/speak";
+import { getDailyLetter, getDailyMission, letterDoneToday, markLetterDone } from "@/lib/letters";
 
 function todayJob() {
   const d = new Date();
@@ -19,6 +21,8 @@ export default function HomeClient() {
   const [me, setMe] = useState<MeProfile | null>(() => loadMe());
   const [daily, setDaily] = useState(MOCK_JOBS[0]);
   const [letter, setLetter] = useState("");
+  const [mission, setMission] = useState<string | null>(null);
+  const [missionDone, setMissionDone] = useState(false);
 
   // 오늘 날짜 기준 직업·편지는 기기에서 정함 (prerender엔 고정값)
   useEffect(() => {
@@ -26,7 +30,19 @@ export default function HomeClient() {
     setDaily(todayJob());
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLetter(getDailyLetter());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMission(getDailyMission());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMissionDone(letterDoneToday());
   }, []);
+
+  function claimMission() {
+    if (!mission || missionDone) return;
+    markLetterDone();
+    setMissionDone(true);
+    addXP(5, "우체통 미션!");
+    speak("우체통 미션 완료! 5 XP 받았다!");
+  }
 
   if (!me) {
     return (
@@ -58,6 +74,19 @@ export default function HomeClient() {
       <div className="rounded-3xl bg-amber-100 p-5 shadow">
         <p className="font-black text-stone-500">💌 형님 우체통 (오늘의 편지)</p>
         <p className="text-lg font-bold">{letter ? `“${letter}”` : "편지 오는 중..."}</p>
+        {mission && (
+          <div className="mt-2 rounded-2xl bg-white p-3">
+            <p className="font-black">🎯 오늘 미션: {mission}</p>
+            <button
+              type="button"
+              onClick={claimMission}
+              disabled={missionDone}
+              className="mt-2 w-full rounded-2xl bg-emerald-400 px-4 py-2 text-lg font-black disabled:opacity-50"
+            >
+              {missionDone ? "✅ 오늘 완료! (+5 XP)" : "했어요! (+5 XP)"}
+            </button>
+          </div>
+        )}
       </div>
 
       <Link href={`/jobs/${daily.code}`} className="animate-floaty block rounded-3xl bg-violet-300 p-5 text-center shadow-lg">
