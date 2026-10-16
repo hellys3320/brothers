@@ -16,6 +16,7 @@ interface Props {
   focusPlaceId: string | null;
   onFocusDone: () => void;
   mapApiRef: MutableRefObject<MapApi | null>;
+  avatar: string;
 }
 
 export interface MapApi {
@@ -23,15 +24,15 @@ export interface MapApi {
   focusPlace: (id: string) => void;
 }
 
-export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focus, focusPlaceId, onFocusDone, mapApiRef }: Props) {
+export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focus, focusPlaceId, onFocusDone, mapApiRef, avatar }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Record<string, Marker>>({});
   const homeRef = useRef<Marker | null>(null);
-  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive, focus });
+  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive, focus, avatar });
 
   useEffect(() => {
-    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focus };
+    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focus, avatar };
   });
 
   // 우리집 바로가기 + 장소 포커싱 API
@@ -70,7 +71,7 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       if (cancelled || !divRef.current || mapRef.current) return;
       const { facilities: facs, center: c, found: f0 } = stateRef.current;
 
-      const map = L.map(divRef.current).setView([c.lat, c.lng], 15);
+      const map = L.map(divRef.current).setView([c.lat, c.lng], 16);
       mapRef.current = map;
 
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -199,7 +200,7 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       const line = L.polyline(path, { dashArray: "8 8", color: "#f59e0b", weight: 5 }).addTo(map);
       map.flyToBounds(line.getBounds().pad(0.25), { duration: 0.8 });
       const me = L.marker(path[0], {
-        icon: L.divIcon({ className: "", html: `<div style="font-size:38px">🕵️</div>`, iconSize: [44, 44], iconAnchor: [22, 22] }),
+        icon: L.divIcon({ className: "", html: `<div style="font-size:42px">${stateRef.current.avatar}</div>`, iconSize: [46, 46], iconAnchor: [23, 23] }),
         zIndexOffset: 1000,
       }).addTo(map);
       // 구간 길이 누적 → 일정한 속도로 걷기

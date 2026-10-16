@@ -1,11 +1,15 @@
 // 내 프로필 (로그인 없이 이 기기에만 저장)
 export interface MeProfile {
   nickname: string;
+  avatar: string;
   dong: string;
   lat: number;
   lng: number;
   label: string;
 }
+
+export const AVATARS = ["😀", "😎", "🤩", "🥳", "😺", "🐶", "🐰", "🐯", "🦊", "🐼", "🐸", "🦄"];
+export const DEFAULT_AVATAR = "🕵️";
 
 const KEY = "brothers-me";
 
@@ -16,6 +20,7 @@ export function loadMe(): MeProfile | null {
     if (!raw) return null;
     const p = JSON.parse(raw) as MeProfile;
     if (!p.nickname || !p.dong) return null;
+    if (!p.avatar) p.avatar = DEFAULT_AVATAR;
     return p;
   } catch {
     return null;

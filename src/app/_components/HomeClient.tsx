@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Onboarding from "@/components/Onboarding";
 import LevelBadge from "@/components/LevelBadge";
-import { clearMe, loadMe, type MeProfile } from "@/lib/me";
+import { clearMe, loadMe, saveMe, AVATARS, type MeProfile } from "@/lib/me";
 import { MOCK_JOBS } from "@/lib/mock";
 
 function todayJob() {
@@ -35,9 +35,27 @@ export default function HomeClient() {
   return (
     <div className="flex flex-col gap-5">
       <div className="animate-pop rounded-3xl bg-gradient-to-r from-amber-300 via-orange-300 to-pink-300 p-6 text-center shadow-lg">
-        <p className="text-5xl">🕵️‍♂️</p>
+        <p className="text-6xl">{me.avatar}</p>
         <h1 className="mt-1 text-3xl font-black">{me.nickname}의 비밀기지!</h1>
         <p className="text-xl font-black">🏠 우리집 ({me.dong})에서 탐험중</p>
+        <div className="mt-2 flex flex-wrap justify-center gap-1">
+          {AVATARS.map((a) => (
+            <button
+              key={a}
+              type="button"
+              onClick={() => {
+                const next = { ...me, avatar: a };
+                saveMe(next);
+                setMe(next);
+              }}
+              aria-pressed={me.avatar === a}
+              className={`rounded-xl px-1 text-2xl ${me.avatar === a ? "bg-white" : "opacity-60"}`}
+              aria-label={`아바타 ${a}로 바꾸기`}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={() => { clearMe(); setMe(null); }}
