@@ -56,6 +56,7 @@ export async function searchHome(query: string): Promise<MeProfile[]> {
       if (j.ok && Array.isArray(j.items) && j.items.length > 0) {
         return j.items.map((a) => ({
           nickname: "",
+          avatar: "",
           dong: q,
           lat: a.lat,
           lng: a.lng,
@@ -82,6 +83,7 @@ export async function geocodeDong(query: string): Promise<MeProfile[]> {
     const arr = (await res.json()) as Array<{ display_name: string; lat: string; lon: string }>;
     return arr.map((a) => ({
       nickname: "",
+      avatar: "",
       dong: q,
       lat: Number(a.lat),
       lng: Number(a.lon),
