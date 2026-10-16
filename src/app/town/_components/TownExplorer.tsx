@@ -22,6 +22,7 @@ const KIND_COLOR: Record<FacilityKind, string> = {
   공원: "bg-green-200",
   학교: "bg-indigo-200",
   빵집: "bg-amber-200",
+  간식: "bg-rose-200",
   병원: "bg-red-200",
   안전지킴이집: "bg-yellow-200",
   주의길: "bg-orange-200",

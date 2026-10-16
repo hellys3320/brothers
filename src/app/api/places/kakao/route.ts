@@ -71,8 +71,9 @@ async function townPlaces(key: string, lat: number, lng: number, dong: string, r
   const x = String(lng);
   const y = String(lat);
   const R = String(Math.min(10000, Math.max(1000, radius)));
-  const [bakeries, libs, parks, hospitals, pharmacies, schools, cares, fires, polices] = await Promise.all([
+  const [bakeries, snacks, libs, parks, hospitals, pharmacies, schools, cares, fires, polices] = await Promise.all([
     kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 빵집`, x, y, radius: R, sort: "distance", size: "6" }),
+    kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 아이스크림`, x, y, radius: R, sort: "distance", size: "6" }),
     kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 도서관`, x, y, radius: R, sort: "distance", size: "6" }),
     kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} 공원`, x, y, radius: R, sort: "distance", size: "8" }),
     kakaoGet(key, "/v2/local/search/category.json", { category_group_code: "HP8", x, y, radius: R, sort: "distance", size: "8" }),
@@ -93,6 +94,7 @@ async function townPlaces(key: string, lat: number, lng: number, dong: string, r
   const N = (n: number) => (extra ? n * 2 : n);
 
   bakeries.filter(isRealBakery).slice(0, N(3)).forEach((d) => push(toPlace(d, "빵집", "🍞"), N(3), "빵집"));
+  snacks.slice(0, N(2)).forEach((d) => push(toPlace(d, "간식", "🍦"), N(2), "간식"));
   libs.slice(0, N(3)).forEach((d) => push(toPlace(d, "도서관", "📚"), N(3), "도서관"));
   parks.slice(0, N(4)).forEach((d) => push(toPlace(d, "공원", "🌳"), N(4), "공원"));
   hospitals.slice(0, N(3)).forEach((d) => push(toPlace(d, "병원", "🏥"), N(3), "병원"));

@@ -75,7 +75,7 @@ async function fetchOverpass(q: string): Promise<Response | null> {
 }
 
 function cacheKey(lat: number, lng: number) {
-  return `brothers-poi-v6-${lat.toFixed(3)}-${lng.toFixed(3)}`;
+  return `brothers-poi-v7-${lat.toFixed(3)}-${lng.toFixed(3)}`;
 }
 
 export function distM(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -112,6 +112,7 @@ function kindOf(tags: Record<string, string>): TownFacility["kind"] | null {
   if (tags.leisure === "park" || tags.leisure === "playground") return "공원";
   if (tags.amenity === "school" || tags.amenity === "kindergarten") return "학교";
   if (tags.shop === "bakery" || tags.craft === "bakery") return "빵집";
+  if (tags.shop === "ice_cream" || tags.shop === "confectionery") return "간식";
   if (tags.amenity === "hospital" || tags.amenity === "clinic" || tags.amenity === "pharmacy") return "병원";
   if (tags.amenity === "police" || tags.amenity === "fire_station") return "안전지킴이집";
   return null;
@@ -119,6 +120,7 @@ function kindOf(tags: Record<string, string>): TownFacility["kind"] | null {
 
 function stampOf(tags: Record<string, string>): string {
   if (tags.leisure === "playground") return "🛝";
+  if (tags.shop === "ice_cream" || tags.shop === "confectionery") return "🍦";
   if (tags.shop === "bakery" || tags.craft === "bakery") return "🍞";
   if (tags.amenity === "kindergarten") return "🧸";
   if (tags.amenity === "school") return "🏫";
@@ -140,6 +142,8 @@ function easyOf(kind: TownFacility["kind"], meters: number): string {
       return `진짜 학교! 친구들이 다녀. ${walk}`;
     case "빵집":
       return `진짜 빵집! 고소한 냄새~ ${walk}`;
+    case "간식":
+      return `시원달콤 간식 가게! ${walk}`;
     case "병원":
       return `아프면 가는 곳이야. ${walk}`;
     case "안전지킴이집":
@@ -154,6 +158,7 @@ const CAP: Record<TownFacility["kind"], number> = {
   공원: 3,
   학교: 2,
   빵집: 2,
+  간식: 2,
   병원: 2,
   안전지킴이집: 2,
   주의길: 0,
@@ -161,7 +166,7 @@ const CAP: Record<TownFacility["kind"], number> = {
 
 function applyCaps(lat: number, lng: number, items: TownFacility[], mult = 1): TownFacility[] {
   const out: TownFacility[] = [];
-  for (const kind of ["도서관", "공원", "학교", "빵집", "병원", "안전지킴이집"] as const) {
+  for (const kind of ["도서관", "공원", "학교", "빵집", "간식", "병원", "안전지킴이집"] as const) {
     out.push(
       ...items
         .filter((i) => i.kind === kind)
@@ -184,6 +189,7 @@ async function viaOverpass(lat: number, lng: number, dong: string, radius = 3500
   nwr["amenity"~"^(school|kindergarten)$"](around:${r},${lat},${lng});
   nwr["shop"="bakery"](around:${r},${lat},${lng});
   nwr["craft"="bakery"](around:${r},${lat},${lng});
+  nwr["shop"~"^(ice_cream|confectionery)$"](around:${r},${lat},${lng});
   nwr["amenity"~"^(hospital|clinic|pharmacy)$"](around:${r},${lat},${lng});
   nwr["amenity"~"^(police|fire_station)$"](around:${r},${lat},${lng});
 );
@@ -238,6 +244,7 @@ async function viaNominatim(lat: number, lng: number, dong: string, boxD = 0.027
     ["공원", "공원", "🌳"],
     ["학교", "학교", "🏫"],
     ["빵집", "빵집", "🍞"],
+    ["아이스크림", "간식", "🍦"],
     ["병원", "병원", "🏥"],
     ["소방서", "안전지킴이집", "🛟"],
     ["경찰서", "안전지킴이집", "🛟"],
