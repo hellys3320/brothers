@@ -12,6 +12,7 @@ export default function FriendsClient() {
   const [input, setInput] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
   // 내 코드·이름을 공유 저장소에 등록 (친구가 이름으로 찾을 수 있게)
   useEffect(() => {
@@ -21,7 +22,12 @@ export default function FriendsClient() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, nickname: me.nickname }),
-    }).catch(() => {});
+    })
+      .then((r) => r.json())
+      .then((j) => {
+        if ((j as { ok: boolean }).ok) setRegistered(true);
+      })
+      .catch(() => {});
   }, [code]);
 
   function copy() {
@@ -76,7 +82,7 @@ export default function FriendsClient() {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-3xl bg-gradient-to-r from-sky-200 to-violet-200 p-6 text-center shadow">
-        <p className="font-black text-stone-600">내 친구 코드</p>
+        <p className="font-black text-stone-600">내 친구 코드 {registered ? "(서버 등록됨 ✓)" : "(등록 중...)"}</p>
         <p className="text-5xl font-black tracking-widest">{code || "..."}</p>
         <button type="button" onClick={copy} className="mt-2 rounded-full bg-white px-6 py-2 font-black shadow">
           📋 코드 복사하기
