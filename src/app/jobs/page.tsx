@@ -18,6 +18,12 @@ export default function JobsPage() {
         <Link href="/jobs/dream" className="rounded-3xl bg-rose-200 p-5 text-center text-xl font-black shadow">
           🌟 꿈 발표장
         </Link>
+        <Link href="/battle" className="rounded-3xl bg-red-300 p-5 text-center text-xl font-black shadow">
+          ⚔️ 카드배틀!
+        </Link>
+        <Link href="/friends" className="rounded-3xl bg-sky-200 p-5 text-center text-xl font-black shadow">
+          👫 내 친구들
+        </Link>
       </div>
       <JobMatcher />
     </div>
