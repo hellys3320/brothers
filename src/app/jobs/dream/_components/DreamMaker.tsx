@@ -33,13 +33,18 @@ export default function DreamMaker() {
 
   function save() {
     if (!code || !msg.trim()) return;
+    const had = !!dream;
     const d: Dream = { code, msg: msg.trim(), date: new Date().toLocaleDateString("ko-KR") };
     try {
       localStorage.setItem("brothers-dream", JSON.stringify(d));
     } catch {}
     setDream(d);
-    addXP(20, "꿈 발표!");
-    speak(`멋진 꿈이다! 20 XP 받았다! 20년 뒤의 ${MOCK_JOBS.find((j) => j.code === code)?.name}!`);
+    if (!had) {
+      addXP(20, "꿈 발표!");
+      speak(`멋진 꿈이다! 20 XP 받았다! 20년 뒤의 ${MOCK_JOBS.find((j) => j.code === code)?.name}!`);
+    } else {
+      speak(`꿈을 바꿨어! 멋지다!`);
+    }
   }
 
   return (

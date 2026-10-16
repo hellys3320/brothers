@@ -35,7 +35,7 @@ export default function ThanksButton({
       all[code] = next;
       localStorage.setItem("brothers-thanks", JSON.stringify(all));
     } catch {}
-    if (!locked) addXP(2, `${spot} 응원!`);
+    if (!locked && n === 0) addXP(2, `${spot} 첫 응원!`);
     speak(`응원 ${next}개째! ${dong}의 ${spot} 사장님께 전해줄게!`);
   }
 
