@@ -296,12 +296,20 @@ function VsGame() {
   const [matchIdx, setMatchIdx] = useState(0);
   const [winners, setWinners] = useState<typeof MOCK_JOBS>([]);
   const [champion, setChampion] = useState<(typeof MOCK_JOBS)[number] | null>(null);
+  const [splash, setSplash] = useState<string | null>("8강 시작!");
 
   // prerender엔 고정, 열리자마자 섞음
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setEntrants(pick(MOCK_JOBS, 8));
   }, []);
+
+  // 스플래시는 1.3초 뒤 사라짐
+  useEffect(() => {
+    if (!splash) return;
+    const t = setTimeout(() => setSplash(null), 1300);
+    return () => clearTimeout(t);
+  }, [splash]);
 
   const roundSize = entrants.length;
   const roundName = roundSize === 8 ? "8강" : roundSize === 4 ? "4강" : "결승!";
@@ -320,6 +328,7 @@ function VsGame() {
         setEntrants(nextWinners);
         setMatchIdx(0);
         setWinners([]);
+        setSplash(nextWinners.length === 4 ? "4강 진출!" : "결승전!");
       }
     } else {
       setWinners(nextWinners);
@@ -332,6 +341,7 @@ function VsGame() {
     setMatchIdx(0);
     setWinners([]);
     setChampion(null);
+    setSplash("8강 시작!");
   }
 
   if (champion) {
@@ -354,7 +364,14 @@ function VsGame() {
   }
 
   return (
-    <div className="rounded-3xl bg-white p-6 text-center shadow">
+    <div className="relative rounded-3xl bg-white p-6 text-center shadow">
+      {splash && (
+        <div key={splash} className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+          <p className="animate-pop rounded-full bg-amber-400 px-10 py-6 text-5xl font-black shadow-2xl">
+            {splash}
+          </p>
+        </div>
+      )}
       <p className="font-black text-stone-500">
         {roundName} · {matchIdx + 1}번째 대결! · 이기면 +5 XP는 결승에서!
       </p>

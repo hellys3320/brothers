@@ -9,6 +9,14 @@ import { MOCK_JOBS } from "@/lib/mock";
 import type { Dream } from "@/app/jobs/dream/_components/DreamMaker";
 import { speak } from "@/lib/speak";
 
+const RARITY_FRAME: Record<string, string> = {
+  커먼: "border-stone-300 bg-gradient-to-b from-stone-50 to-stone-200",
+  레어: "border-sky-400 bg-gradient-to-b from-sky-100 to-sky-200",
+  레전드: "border-amber-400 bg-gradient-to-b from-amber-100 to-orange-200",
+};
+
+const POWER_EMOJI: Record<string, string> = { 힘: "💪", 말하기: "🗣️", 그리기: "🎨", 관찰: "🔍", 손재주: "✋" };
+
 const MOODS = ["😄", "😮", "😤", "🥱", "🤩"];
 
 function read(key: string, fallback: string): string {
@@ -134,7 +142,7 @@ export default function MyBoxClient() {
       </div>
 
       <div className="rounded-3xl bg-white p-5 shadow">
-        <h2 className="text-2xl font-black">💼 얻은 직업 카드 ({jobCards.length}장)</h2>
+        <h2 className="text-2xl font-black">💼 직업 카드 도감 ({jobCards.length}/{MOCK_JOBS.length})</h2>
         {jobCards.length === 0 ? (
           <div>
             <p className="mt-2 font-bold">아직 없어. 직업 도감에서 카드를 열어봐!</p>
@@ -143,14 +151,35 @@ export default function MyBoxClient() {
             </Link>
           </div>
         ) : (
-          <ul className="mt-3 grid grid-cols-2 gap-2">
-            {jobCards.map((j) => (
-              <li key={j.code}>
-                <Link href={`/jobs/${j.code}`} className="block rounded-2xl bg-sky-50 px-3 py-2 text-lg font-black">
-                  {j.emoji} {j.name}
-                </Link>
-              </li>
-            ))}
+          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {jobCards.map((j) => {
+              const no = String(MOCK_JOBS.findIndex((x) => x.code === j.code) + 1).padStart(3, "0");
+              return (
+                <li key={j.code}>
+                  <Link
+                    href={`/jobs/${j.code}`}
+                    className={`block rounded-2xl border-4 p-2 text-center shadow ${RARITY_FRAME[j.rarity]}`}
+                  >
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-xs font-black text-stone-500">No.{no}</span>
+                      <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-black">{j.rarity}</span>
+                    </div>
+                    <div className="mx-auto mt-1 flex h-20 w-20 items-center justify-center rounded-full bg-white/70 text-5xl">
+                      {j.emoji}
+                    </div>
+                    <p className="mt-1 text-lg font-black">{j.name}</p>
+                    <p className="text-xs font-black text-stone-500">{j.field}</p>
+                    <p className="mt-1 text-xs font-bold">
+                      {(Object.entries(j.powers) as [string, number][]).map(([k, v]) => (
+                        <span key={k} className="mr-1">
+                          {POWER_EMOJI[k]}{v}
+                        </span>
+                      ))}
+                    </p>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
