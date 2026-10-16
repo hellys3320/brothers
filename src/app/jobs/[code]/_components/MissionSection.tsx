@@ -25,7 +25,7 @@ export default function MissionSection({
     return (
       <div className="rounded-3xl bg-stone-200 p-5 text-center shadow">
         <p className="text-4xl">🔒</p>
-        <p className="text-xl font-black">레전드 체험은 탐험대원부터!</p>
+        <p className="text-xl font-black">레전드 체험은 골목대장(Lv.3)부터!</p>
         <p className="font-bold text-stone-600">탐험·퀴즈·미션으로 XP를 모아봐. (현재 {getXP()} XP · {levelFor(getXP()).name})</p>
       </div>
     );

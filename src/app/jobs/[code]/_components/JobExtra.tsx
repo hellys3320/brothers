@@ -22,7 +22,7 @@ export default function JobExtra({
 }) {
   const [xp] = useState(() => getXP());
   const [dong] = useState(() => loadMe()?.dong ?? "우리동네");
-  const locked = rarity === "레전드" && levelFor(xp).lv < 2;
+  const locked = rarity === "레전드" && levelFor(xp).lv < 3;
 
   return (
     <div className="flex flex-col gap-5">

@@ -42,7 +42,7 @@ export default function ThanksButton({
   if (locked) {
     return (
       <div className="rounded-3xl bg-stone-200 p-5 text-center shadow">
-        <p className="text-xl font-black">🔒 응원 보내기는 탐험대원부터!</p>
+        <p className="text-xl font-black">🔒 응원 보내기는 골목대장(Lv.3)부터!</p>
         <p className="font-bold text-stone-600">(현재 {getXP()} XP · {levelFor(getXP()).name})</p>
       </div>
     );
