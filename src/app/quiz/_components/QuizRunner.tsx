@@ -60,37 +60,6 @@ export default function QuizRunner() {
   const done = results.length >= quiz.length;
   const score = results.filter(Boolean).length;
 
-  // 5초 타이머 (선택하면 멈춤, 시간 끝이면 타임아웃)
-  useEffect(() => {
-    if (done || !q || picked !== null) return;
-    setTimeLeft(TIME_LIMIT);
-    const iv = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 0.1) {
-          clearInterval(iv);
-          return 0;
-        }
-        return Math.round((t - 0.1) * 10) / 10;
-      });
-    }, 100);
-    return () => clearInterval(iv);
-  }, [idx, done, q, picked, quiz]);
-
-  useEffect(() => {
-    if (timeLeft === 0 && picked === null && !done && q) {
-      setPicked(-1);
-      speak("땡! 시간 끝!");
-      timeoutRef.current = setTimeout(() => advance(-1), 1500);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft]);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
   function pick(i: number) {
     if (!q || picked !== null) return;
     setPicked(i);
@@ -106,6 +75,7 @@ export default function QuizRunner() {
     setResults(nextResults);
     setPicks([...picks, choice]);
     setPicked(null);
+    setTimeLeft(TIME_LIMIT);
     if (nextResults.length >= quiz.length) {
       finish(nextResults);
     } else {
@@ -145,11 +115,13 @@ export default function QuizRunner() {
       speak(`끝! 아쉬워! 다시 해보자!`);
     }
     // 동네 미션 발급: 틀린 문제의 장소를 동네에서 찾기 (최대 2곳)
-    const kinds = [...new Set(
-      quiz
-        .map((item, i) => (!nextResults[i] ? QUIZ_PLACE[item.id] : null))
-        .filter((k): k is string => !!k)
-    )].slice(0, 2);
+    const kinds: string[] = [];
+    quiz.forEach((item, i) => {
+      if (!nextResults[i]) {
+        const k = QUIZ_PLACE[item.id] as string | undefined;
+        if (k && !kinds.includes(k) && kinds.length < 2) kinds.push(k);
+      }
+    });
     const finalKinds = kinds.length > 0 ? kinds : ["빵집"];
     const nq: TownQuest = { date: today, kinds: finalKinds, done: false };
     saveQuest(nq);
@@ -180,6 +152,50 @@ export default function QuizRunner() {
   function retryWrong() {
     resetTo(quiz.filter((_, i) => !results[i]));
   }
+
+  // 5초 타이머 (선택하면 멈춤, 시간 끝이면 타임아웃)
+  useEffect(() => {
+    if (done || !q || picked !== null) return;
+    const iv = setInterval(() => {
+      setTimeLeft((t) => {
+        if (t <= 0.1) {
+          clearInterval(iv);
+          return 0;
+        }
+        return Math.round((t - 0.1) * 10) / 10;
+      });
+    }, 100);
+    return () => clearInterval(iv);
+  }, [idx, done, q, picked, quiz]);
+
+  useEffect(() => {
+    if (timeLeft === 0 && picked === null && !done && q) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPicked(-1);
+      speak("땡! 시간 끝!");
+      timeoutRef.current = setTimeout(() => {
+        const qq = quiz[idx];
+        if (!qq) return;
+        const nr = [...results, false];
+        setResults(nr);
+        setPicks([...picks, -1]);
+        setPicked(null);
+        setTimeLeft(TIME_LIMIT);
+        if (nr.length >= quiz.length) {
+          finish(nr);
+        } else {
+          setIdx(idx + 1);
+        }
+      }, 1500);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   if (done) {
     return (
