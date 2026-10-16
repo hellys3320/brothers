@@ -188,6 +188,7 @@ export default function TownExplorer() {
     if (!f || found.includes(id) || travel) return;
     // 목록모드면 지도를 켜야 형님이 걸어갈 수 있음
     if (listMode) setListMode(false);
+    document.getElementById("town-map")?.scrollIntoView({ behavior: "smooth", block: "center" });
     // 바로 도장 대신 형님이 걸어감 (도착하면 onArrive에서 도장)
     setTravel(f);
     const meters = Math.round(distM(center.lat, center.lng, f.lat, f.lng));
