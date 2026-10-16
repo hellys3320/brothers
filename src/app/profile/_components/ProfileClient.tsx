@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { loadMe, saveMe, searchHome, reverseDong, type MeProfile } from "@/lib/me";
 import { getXP, levelFor } from "@/lib/xp";
 import { speak } from "@/lib/speak";
@@ -13,6 +14,7 @@ const HomePicker = dynamic(() => import("@/components/HomePicker"), {
 });
 
 export default function ProfileClient() {
+  const router = useRouter();
   const [me, setMe] = useState<MeProfile | null>(() => loadMe());
   const [xp] = useState(() => getXP());
   const [editName, setEditName] = useState(false);
@@ -181,7 +183,8 @@ export default function ProfileClient() {
               try {
                 localStorage.clear();
               } catch {}
-              window.location.href = "/";
+              router.push("/");
+              window.location.reload();
             }
           }}
           className="mt-2 w-full rounded-2xl bg-red-300 px-4 py-3 text-xl font-black"
