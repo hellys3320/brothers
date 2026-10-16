@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { MapApi } from "./TownMap";
+import PlacePhoto from "./PlacePhoto";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
 import { fetchRealFacilities, fetchMorePlaces, loadCached, saveCached, dirWord, distM, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
 import { addXP } from "@/lib/xp";
@@ -383,6 +384,7 @@ export default function TownExplorer() {
               </button>
               <p className="font-bold text-stone-700">{f.easy}</p>
               {!got && <p className="mt-1 font-black text-sky-700">{hint}</p>}
+              <PlacePhoto name={f.name} dong={f.dong} />
               <button
                 type="button"
                 onClick={() => discover(f.id)}
