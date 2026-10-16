@@ -32,6 +32,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link className="rounded-2xl bg-white px-4 py-2 shadow" href="/mybox">
                 수집함
               </Link>
+              <Link className="rounded-2xl bg-white px-4 py-2 shadow" href="/profile">
+                내정보
+              </Link>
             </nav>
           </div>
         </header>

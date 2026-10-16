@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Onboarding from "@/components/Onboarding";
 import LevelBadge from "@/components/LevelBadge";
-import { clearMe, loadMe, type MeProfile } from "@/lib/me";
+import { loadMe, type MeProfile } from "@/lib/me";
 import { MOCK_JOBS } from "@/lib/mock";
 
 function todayJob() {
@@ -38,13 +38,12 @@ export default function HomeClient() {
         <p className="text-6xl">🕵️</p>
         <h1 className="mt-1 text-3xl font-black">{me.nickname}의 비밀기지!</h1>
         <p className="text-xl font-black">🏠 우리집 ({me.dong})에서 탐험중</p>
-        <button
-          type="button"
-          onClick={() => { clearMe(); setMe(null); }}
-          className="mt-2 rounded-full bg-white/80 px-4 py-1 text-sm font-black"
+        <Link
+          href="/profile"
+          className="mt-2 inline-block rounded-full bg-white/80 px-4 py-1 text-sm font-black"
         >
-          우리집 바꾸기
-        </button>
+          내 정보 보기·바꾸기
+        </Link>
       </div>
 
       <LevelBadge />
