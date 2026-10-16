@@ -231,10 +231,19 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       const total = Math.max(1, seg[seg.length - 1]);
       const dur = 4000;
       const t0 = performance.now();
+      let lastSeg = 0;
+      const faceSeg = (i: number) => {
+        // 코너를 돌 때마다 그 구간 방향을 보고 뒤집기 (캐릭터 정면이 오른쪽 기준)
+        if (!box || i === lastSeg) return;
+        lastSeg = i;
+        const dx = path[i][1] - path[i - 1][1];
+        if (Math.abs(dx) > 1e-9) box.style.transform = dx >= 0 ? "" : "scaleX(-1)";
+      };
       const at = (d: number): [number, number] => {
         let i = 1;
         while (i < seg.length - 1 && seg[i] < d) i++;
         const k = seg[i] === seg[i - 1] ? 0 : (d - seg[i - 1]) / (seg[i] - seg[i - 1]);
+        faceSeg(i);
         return [
           path[i - 1][0] + (path[i][0] - path[i - 1][0]) * k,
           path[i - 1][1] + (path[i][1] - path[i - 1][1]) * k,
