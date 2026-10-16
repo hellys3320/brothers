@@ -1,14 +1,5 @@
-"use client";
-
-export function speak(text: string) {
-  try {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "ko-KR";
-    u.rate = 0.95;
-    window.speechSynthesis.speak(u);
-  } catch {
-    // 조용히 무시 (초등 태블릿 대응)
-  }
+// 읽어주기: 기기 문제로 동작 안 해서 끔 (버튼도 제거됨)
+// 살리려면 아래 주석을 풀고 HyungnimTalk에 버튼 복원
+export function speak(_text: string) {
+  void _text;
 }

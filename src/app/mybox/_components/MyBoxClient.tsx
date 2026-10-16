@@ -253,11 +253,8 @@ export default function MyBoxClient() {
       </div>
 
       <div className="flex gap-2">
-        <Link href="/print" className="flex-1 rounded-2xl bg-white px-4 py-3 text-center font-black shadow">
-          🖨️ 기록표 보기
-        </Link>
         <button type="button" onClick={resetAll} className="flex-1 rounded-2xl bg-stone-200 px-4 py-3 font-black">
-          🗑️ 처음부터
+          🗑️ 기록 지우기 (처음부터)
         </button>
       </div>
     </div>

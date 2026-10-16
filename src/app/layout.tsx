@@ -42,9 +42,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <footer className="border-t-2 border-amber-200 bg-white/70">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-sm font-bold text-stone-600">
             <span>나라 통계를 쉬운 말로 바꿨어요. 로그인 없어요.</span>
-            <Link href="/print" className="rounded-full bg-white px-4 py-1 shadow">
-              🖨️ 선생님용 기록표
-            </Link>
           </div>
         </footer>
       </body>

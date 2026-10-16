@@ -166,9 +166,28 @@ export default function ProfileClient() {
         <Link href="/mybox" className="rounded-3xl bg-pink-300 p-5 text-center text-xl font-black shadow">
           🎒 수집함
         </Link>
-        <Link href="/print" className="rounded-3xl bg-white p-5 text-center text-xl font-black shadow">
-          🖨️ 기록표
+        <Link href="/town" className="rounded-3xl bg-emerald-300 p-5 text-center text-xl font-black shadow">
+          🗺️ 동네탐험
         </Link>
+      </div>
+
+      <div className="rounded-3xl bg-red-50 p-5 text-center shadow">
+        <h2 className="text-xl font-black">🗑️ 처음부터 시작하기</h2>
+        <p className="font-bold text-stone-500">이름·우리집·도장·XP 전부 지워져!</p>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm("정말 다 지우고 처음부터 시작할까?")) {
+              try {
+                localStorage.clear();
+              } catch {}
+              window.location.href = "/";
+            }
+          }}
+          className="mt-2 w-full rounded-2xl bg-red-300 px-4 py-3 text-xl font-black"
+        >
+          다 지우기!
+        </button>
       </div>
     </div>
   );
