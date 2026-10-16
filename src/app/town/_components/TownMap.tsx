@@ -6,7 +6,7 @@ import lottie, { type AnimationItem } from "lottie-web";
 import type { TownFacility } from "@/lib/mock";
 import "leaflet/dist/leaflet.css";
 
-// 걷기 캐릭터: LottieFiles 무료 "Character Walk Cycle" (디자이너 제작 벡터)
+// 걷기 캐릭터: LottieFiles 무료 "Hiker Walking" (배낭 멘 탐험가, 디자이너 제작 벡터)
 // 파일: public/animations/walk.json
 
 interface Props {
