@@ -11,7 +11,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" className="h-full">
       <body className="min-h-full flex flex-col">
-        <header className="sticky top-0 z-10 border-b-4 border-amber-300 bg-[#FFF3C4]">
+        <header className="sticky top-0 z-30 border-b-4 border-amber-300 bg-[#FFF3C4]">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-3">
             <Link href="/" className="text-2xl font-black">
               🗝️ 형님의 비밀기지

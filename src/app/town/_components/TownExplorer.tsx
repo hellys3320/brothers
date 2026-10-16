@@ -222,7 +222,7 @@ export default function TownExplorer() {
   return (
     <div className="relative flex flex-col gap-4">
       {cheer && (
-        <div className="animate-pop pointer-events-none fixed inset-x-0 top-24 z-20 mx-auto w-fit rounded-full bg-amber-400 px-8 py-4 text-3xl font-black shadow-xl">
+        <div className="animate-pop pointer-events-none fixed inset-x-0 top-24 z-40 mx-auto w-fit rounded-full bg-amber-400 px-8 py-4 text-3xl font-black shadow-xl">
           🎉 {cheer}
         </div>
       )}
