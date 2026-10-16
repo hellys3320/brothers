@@ -7,15 +7,15 @@ export interface Level {
 
 export const LEVELS: Level[] = [
   { lv: 1, name: "탐험새싹", xp: 0 },
-  { lv: 2, name: "동네친구", xp: 30 },
-  { lv: 3, name: "골목대장", xp: 80 },
-  { lv: 4, name: "탐험대원", xp: 150 },
-  { lv: 5, name: "비밀지도사", xp: 250 },
-  { lv: 6, name: "동네박사", xp: 380 },
-  { lv: 7, name: "직업박사", xp: 550 },
-  { lv: 8, name: "명예형님", xp: 750 },
-  { lv: 9, name: "전설의형님", xp: 1000 },
-  { lv: 10, name: "신화의형님", xp: 1300 },
+  { lv: 2, name: "동네친구", xp: 50 },
+  { lv: 3, name: "골목대장", xp: 130 },
+  { lv: 4, name: "탐험대원", xp: 250 },
+  { lv: 5, name: "비밀지도사", xp: 420 },
+  { lv: 6, name: "동네박사", xp: 650 },
+  { lv: 7, name: "직업박사", xp: 950 },
+  { lv: 8, name: "명예형님", xp: 1300 },
+  { lv: 9, name: "전설의형님", xp: 1750 },
+  { lv: 10, name: "신화의형님", xp: 2300 },
 ];
 
 const KEY = "brothers-xp";
