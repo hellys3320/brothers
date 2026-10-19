@@ -174,12 +174,12 @@ export default function BattleClient() {
   const [view, setView] = useState<
     | { k: "menu" }
     | { k: "create"; toCode: string }
-    | { k: "wait"; id: string }
+    | { k: "wait"; id: string; toCode?: string }
     | { k: "play"; battle: Battle }
     | { k: "result"; battle: Battle }
     | { k: "local-p1" } | { k: "local-p2"; p1: { name: string; rounds: BattleRound[] } } | { k: "local-result"; p1name: string; p2name: string; results: Array<{ aVal: number; bVal: number; win: string }> ; aRounds: BattleRound[]; bRounds: BattleRound[] }
-  >({ k: "menu" });
-  const [joinCode, setJoinCode] = useState(to ?? "");
+  >(() => (to ? { k: "create", toCode: to.toUpperCase() } : { k: "menu" }));
+  const [joinCode, setJoinCode] = useState("");
   const [incoming, setIncoming] = useState<Array<{ id: string; from: string; at: number; status: string }>>([]);
   const [msg, setMsg] = useState("");
   const [p1name, setP1name] = useState("");
@@ -234,8 +234,8 @@ export default function BattleClient() {
       });
       const j = (await res.json()) as { ok: boolean; id?: string; reason?: string };
       if (j.ok && j.id) {
-        speak(`대결 코드 ${j.id}! 친구에게 알려줘!`);
-        setView({ k: "wait", id: j.id });
+        speak(toCode ? "친구에게 대결을 신청했어!" : `대결 코드 ${j.id}! 친구에게 알려줘!`);
+        setView({ k: "wait", id: j.id, toCode: toCode || undefined });
       } else if (j.reason === "no-store") {
         setMsg("대결 서버가 아직 안 열렸어! 둘이서 모드로 놀아!");
       } else {
@@ -389,7 +389,11 @@ export default function BattleClient() {
           <p className="text-4xl">⏳</p>
           <h2 className="text-3xl font-black">친구를 기다리는 중...</h2>
           <p className="mt-2 text-5xl font-black tracking-widest">{view.id}</p>
-          <p className="font-bold text-stone-500">이 코드를 친구에게 알려줘!</p>
+          {view.toCode ? (
+            <p className="font-bold text-stone-500">친구에게 신청됐어! 친구가 &lsquo;도착한 대결&rsquo;에서 확인하면 시작돼!</p>
+          ) : (
+            <p className="font-bold text-stone-500">이 코드를 친구에게 알려줘!</p>
+          )}
           <button type="button" onClick={() => setView({ k: "menu" })} className="mt-3 rounded-full bg-stone-100 px-6 py-2 font-black">
             그만두기
           </button>
