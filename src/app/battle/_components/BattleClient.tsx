@@ -8,9 +8,25 @@ import { myCode } from "@/lib/friends";
 import { loadMe } from "@/lib/me";
 import { addXP } from "@/lib/xp";
 import { speak } from "@/lib/speak";
+import JobCardFace from "@/components/JobCardFace";
+import { loadSockets, socketBonusOf, socketFor } from "@/lib/treasures";
 import type { Battle, BattleRound } from "@/app/api/battle/route";
 
 const STATS = ["힘", "말하기", "그리기", "관찰", "손재주"];
+
+// 소켓(보물) 강화를 반영한 라운드로 변환
+function withSockets(rounds: BattleRound[]): BattleRound[] {
+  const sockets = loadSockets();
+  return rounds.map((r) => {
+    const bonus = socketBonusOf(sockets, r.card);
+    return bonus > 0 ? { ...r, bonus } : r;
+  });
+}
+
+function noOf(code: string): string {
+  const i = MOCK_JOBS.findIndex((j) => j.code === code);
+  return i >= 0 ? String(i + 1).padStart(3, "0") : "???";
+}
 
 function ownedCodes(): string[] {
   if (typeof window === "undefined") return [];
@@ -48,6 +64,7 @@ function DeckBuilder({ title, onDone }: { title: string; onDone: (rounds: Battle
     const owned = ownedCodes();
     return owned.length >= 3 ? MOCK_JOBS.filter((j) => owned.includes(j.code)) : MOCK_JOBS;
   });
+  const [sockets] = useState(loadSockets);
   const [picks, setPicks] = useState<BattleRound[]>([
     { card: "", stat: "힘" },
     { card: "", stat: "힘" },
@@ -99,9 +116,18 @@ function DeckBuilder({ title, onDone }: { title: string; onDone: (rounds: Battle
               </button>
             ))}
           </div>
-          <p className="mt-1 font-bold">
-            {picks[r].card ? `${jobOf(picks[r].card)?.emoji} ${jobOf(picks[r].card)?.name} × ${picks[r].stat}` : "카드 골라!"}
-          </p>
+          {picks[r].card ? (
+            <div className="mt-2 flex items-center gap-3">
+              <div className="w-20 shrink-0">
+                <JobCardFace job={jobOf(picks[r].card)!} no={noOf(picks[r].card)} socket={socketFor(sockets, picks[r].card)} />
+              </div>
+              <p className="font-bold">
+                {jobOf(picks[r].card)?.name} × {picks[r].stat}로 겨루기!
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 font-bold text-stone-500">카드 골라!</p>
+          )}
         </div>
       ))}
       <button
@@ -145,9 +171,13 @@ function ResultView({ battle, myCode: me }: { battle: Battle; myCode: string }) 
                 <p>
                   {r.win === "draw" ? "➖" : (r.win === "a") === mineFirst ? "⭕" : "❌"} {i + 1}판 · {a.stat} 대결!
                 </p>
-                <p>
-                  {aj?.emoji} {aj?.name} {r.aVal} vs {bj?.emoji} {bj?.name} {r.bVal}
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <div className="w-14 shrink-0">{aj && <JobCardFace job={aj} no={noOf(a.card)} />}</div>
+                  <p className="text-xl">{r.aVal}</p>
+                  <span className="font-black text-stone-400">vs</span>
+                  <p className="text-xl">{r.bVal}</p>
+                  <div className="w-14 shrink-0">{b && bj && <JobCardFace job={bj} no={noOf(b.card)} />}</div>
+                </div>
               </li>
             );
           })}
@@ -230,7 +260,7 @@ export default function BattleClient() {
       const res = await fetch("/api/battle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ op: "create", aCode: me, aName: myName, toCode: toCode || undefined, rounds }),
+        body: JSON.stringify({ op: "create", aCode: me, aName: myName, toCode: toCode || undefined, rounds: withSockets(rounds) }),
       });
       const j = (await res.json()) as { ok: boolean; id?: string; reason?: string };
       if (j.ok && j.id) {
@@ -280,7 +310,7 @@ export default function BattleClient() {
       const res = await fetch("/api/battle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ op: "answer", id: view.battle.id, code: me, name: myName, rounds: finalPicks }),
+        body: JSON.stringify({ op: "answer", id: view.battle.id, code: me, name: myName, rounds: withSockets(finalPicks) }),
       });
       const j = (await res.json()) as { ok: boolean; battle?: Battle; reason?: string };
       if (j.ok && j.battle) {
@@ -526,9 +556,17 @@ function PlayView({
   return (
     <div className="rounded-3xl bg-white p-5 shadow">
       <p className="font-black text-stone-500">{round + 1}판 / 3판</p>
-      <div className="mt-2 rounded-2xl bg-red-100 p-4 text-center">
-        <p className="font-black text-stone-500">{battle.a.name}가 냄!</p>
-        <p className="text-4xl font-black">{foeJob?.emoji} {foeJob?.name} × {foe.stat}</p>
+      <div className="mt-2 flex flex-col items-center rounded-2xl bg-red-100 p-4 text-center">
+        <p className="font-black text-stone-500">{battle.a.name}가 낸 카드!</p>
+        {foeJob && (
+          <div className="mt-2 w-28">
+            <JobCardFace job={foeJob} no={noOf(foe.card)} />
+          </div>
+        )}
+        <p className="mt-1 text-lg font-black">
+          겨루는 힘: {foe.stat}
+          {foe.bonus ? ` (보물 강화 +${foe.bonus})` : ""}
+        </p>
       </div>
       <p className="mt-3 text-xl font-black">내 카드 내기!</p>
       <div className="mt-1 flex max-h-48 flex-wrap gap-1 overflow-y-auto">

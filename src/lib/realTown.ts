@@ -91,6 +91,23 @@ export function walkText(meters: number) {
   return meters < 150 ? "바로 앞!" : `약 ${Math.round(meters / 100) * 100}m!`;
 }
 
+// 어린이 걸음 기준 대략 분당 70m (신호 대기 조금 포함)
+export function walkMinutes(meters: number): number {
+  return Math.max(1, Math.round(meters / 70));
+}
+
+export function distText(meters: number): string {
+  if (meters < 120) return "바로 앞";
+  if (meters < 1000) return `${Math.round(meters / 10) * 10}m`;
+  return `${(meters / 1000).toFixed(1)}km`;
+}
+
+// "320m · 걸어서 약 5분" 처럼 거리와 도보시간을 함께
+export function walkInfo(meters: number): string {
+  if (meters < 120) return "바로 앞";
+  return `${distText(meters)} · 걸어서 약 ${walkMinutes(meters)}분`;
+}
+
 // 중심에서 보면 어느 쪽인지 (보물찾기 힌트용)
 export function dirWord(lat1: number, lng1: number, lat2: number, lng2: number): string {
   const dirs = ["북쪽", "북동쪽", "동쪽", "남동쪽", "남쪽", "남서쪽", "서쪽", "북서쪽"];

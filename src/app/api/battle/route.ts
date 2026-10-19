@@ -5,6 +5,8 @@ import { MOCK_JOBS } from "@/lib/mock";
 export interface BattleRound {
   card: string;
   stat: string;
+  /** 카드 소켓(보물) 강화 수치 */
+  bonus?: number;
 }
 
 export interface Battle {
@@ -19,10 +21,11 @@ export interface Battle {
   createdAt: number;
 }
 
-function valOf(code: string, stat: string): number {
+function valOf(code: string, stat: string, bonus = 0): number {
   const j = MOCK_JOBS.find((x) => x.code === code);
   const v = (j?.powers as Record<string, number> | undefined)?.[stat];
-  return typeof v === "number" ? v : 0;
+  const safe = Number.isFinite(bonus) ? Math.max(0, Math.min(5, Math.floor(bonus))) : 0;
+  return (typeof v === "number" ? v : 0) + safe;
 }
 
 export async function POST(req: Request) {
@@ -73,8 +76,8 @@ export async function POST(req: Request) {
       if (b.a.code === body.code.toUpperCase()) return Response.json({ ok: false, reason: "self" });
       const result = b.aRounds.map((ar, i) => {
         const br = body.rounds![i];
-        const aVal = valOf(ar.card, ar.stat);
-        const bVal = valOf(br.card, br.stat);
+        const aVal = valOf(ar.card, ar.stat, ar.bonus);
+        const bVal = valOf(br.card, br.stat, br.bonus);
         return { aVal, bVal, win: (aVal === bVal ? "draw" : aVal > bVal ? "a" : "b") as "a" | "b" | "draw" };
       });
       const aWins = result.filter((x) => x.win === "a").length;

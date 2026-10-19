@@ -6,12 +6,13 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { MapApi } from "./TownMap";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
-import { fetchRealFacilities, fetchMorePlaces, loadCached, saveCached, dirWord, distM, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
+import { fetchRealFacilities, fetchMorePlaces, loadCached, saveCached, dirWord, distM, walkInfo, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
 import { addXP } from "@/lib/xp";
 import { logStamp } from "@/lib/stamps";
 import { todayQuest, saveQuest, type TownQuest } from "@/lib/quest";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
+import { addTreasure, loadTreasures, saveTreasures, tryFindTreasure, type Treasure } from "@/lib/treasures";
 
 const TownMap = dynamic(() => import("./TownMap"), {
   ssr: false,
@@ -131,6 +132,7 @@ export default function TownExplorer() {
   const [found, setFound] = useState<string[]>(loadStamps);
   const [listMode, setListMode] = useState(false);
   const [cheer, setCheer] = useState<string | null>(null);
+  const [treasureFind, setTreasureFind] = useState<Treasure | null>(null);
   const [travel, setTravel] = useState<TownFacility | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreEmpty, setMoreEmpty] = useState(false);
@@ -195,8 +197,7 @@ export default function TownExplorer() {
     // 바로 도장 대신 형님이 걸어감 (도착하면 onArrive에서 도장)
     setTravel(f);
     const meters = Math.round(distM(center.lat, center.lng, f.lat, f.lng));
-    const walk = meters < 150 ? "바로 앞" : `약 ${Math.round(meters / 100) * 100}미터`;
-    speak(`출발! ${dirWord(center.lat, center.lng, f.lat, f.lng)}으로 ${walk}! 따라와!`);
+    speak(`출발! ${dirWord(center.lat, center.lng, f.lat, f.lng)}으로 ${walkInfo(meters)}! 따라와!`);
   }
 
   function onArrive(id: string) {
@@ -221,6 +222,18 @@ export default function TownExplorer() {
         setTimeout(() => speak("보너스! 동네 미션 완료! 5 XP 더 받았다!"), 2500);
       }
     } catch {}
+    // 보물 랜덤 발견! (처음엔 꼭 하나, 이후 55%)
+    try {
+      const inv = loadTreasures();
+      const t = tryFindTreasure(inv);
+      if (t) {
+        saveTreasures(addTreasure(inv, t.id));
+        setTreasureFind(t);
+        addXP(3, `보물 '${t.name}' 발견!`);
+        setTimeout(() => setTreasureFind(null), 3000);
+        setTimeout(() => speak(`보물 발견! ${t.name}! 수집함에서 카드에 꽂아봐!`), 3200);
+      }
+    } catch {}
     const gotNow = next.filter((n) => places.some((p) => p.id === n)).length;
     speak(`${f.name} 도착! ${f.easy} 스탬프를 받았다! 수집함에 저장됐다!`);
     setCheer(`${f.stamp} ${f.name} 찾았다! (${gotNow}/${places.length})`);
@@ -238,6 +251,17 @@ export default function TownExplorer() {
       {cheer && (
         <div className="animate-pop pointer-events-none fixed inset-x-0 top-24 z-40 mx-auto w-fit rounded-full bg-amber-400 px-8 py-4 text-3xl font-black shadow-xl">
           🎉 {cheer}
+        </div>
+      )}
+      {treasureFind && (
+        <div className="animate-pop pointer-events-none fixed inset-x-0 top-40 z-40 mx-auto w-fit rounded-3xl bg-gradient-to-r from-amber-300 to-yellow-400 px-6 py-4 text-center shadow-xl">
+          <p className="text-xl font-black">✨ 보물 발견! ✨</p>
+          <p className="text-2xl font-black">
+            {treasureFind.emoji} {treasureFind.name}
+          </p>
+          <p className="text-sm font-black text-stone-700">
+            {treasureFind.stat} +{treasureFind.bonus} 강화! 수집함에서 카드에 꽂아봐!
+          </p>
         </div>
       )}
       <div className="rounded-2xl bg-white p-3 shadow">
@@ -368,7 +392,7 @@ export default function TownExplorer() {
           .map((f) => {
           const got = found.includes(f.id);
           const meters = Math.round(distM(center.lat, center.lng, f.lat, f.lng));
-          const hint = `🧭 ${dirWord(center.lat, center.lng, f.lat, f.lng)}으로 ${meters < 150 ? "바로 앞" : `약 ${Math.round(meters / 100) * 100}m`}!`;
+          const hint = `🧭 ${dirWord(center.lat, center.lng, f.lat, f.lng)}으로 ${walkInfo(meters)}!`;
           const going = travel?.id === f.id;
           return (
             <li

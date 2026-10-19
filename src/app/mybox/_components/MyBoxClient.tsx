@@ -6,16 +6,20 @@ import { loadMyPlaces } from "@/lib/realTown";
 import { getXP, getXPLog, levelFor } from "@/lib/xp";
 import { loadStampLog } from "@/lib/stamps";
 import { MOCK_JOBS } from "@/lib/mock";
+import JobCardFace from "@/components/JobCardFace";
+import {
+  TREASURES,
+  TREASURE_STYLE,
+  loadTreasures,
+  loadSockets,
+  saveSockets,
+  socketFor,
+  treasureCount,
+  type Inventory,
+  type Sockets,
+} from "@/lib/treasures";
 import type { Dream } from "@/app/jobs/dream/_components/DreamMaker";
 import { speak } from "@/lib/speak";
-
-const RARITY_FRAME: Record<string, string> = {
-  커먼: "border-stone-300 bg-gradient-to-b from-stone-50 to-stone-200",
-  레어: "border-sky-400 bg-gradient-to-b from-sky-100 to-sky-200",
-  레전드: "border-amber-400 bg-gradient-to-b from-amber-100 to-orange-200",
-};
-
-const POWER_EMOJI: Record<string, string> = { 힘: "💪", 말하기: "🗣️", 그리기: "🎨", 관찰: "🔍", 손재주: "✋" };
 
 const MOODS = ["😄", "😮", "😤", "🥱", "🤩"];
 
@@ -56,9 +60,9 @@ function dateStr(t: number): string {
 }
 
 export default function MyBoxClient() {
-  const [stamps, setStamps] = useState<string[]>(readStamps);
+  const [stamps] = useState<string[]>(readStamps);
   const [myPlaces] = useState(loadMyPlaces);
-  const [stampLog, setStampLog] = useState(loadStampLog);
+  const [stampLog] = useState(loadStampLog);
   const [visitedJobs] = useState<string[]>(readVisitedJobs);
   const [xpLog] = useState(getXPLog);
   const [xp] = useState(() => getXP());
@@ -66,6 +70,9 @@ export default function MyBoxClient() {
   const [saved, setSaved] = useState<string>(() => read("brothers-diary", ""));
   const [mood, setMood] = useState<string>(() => read("brothers-mood", MOODS[0]));
   const [best] = useState<number>(() => Number(read("brothers-quiz-best", "0")));
+  const [inventory] = useState<Inventory>(loadTreasures);
+  const [sockets, setSockets] = useState<Sockets>(loadSockets);
+  const [socketTarget, setSocketTarget] = useState<string | null>(null);
   const [dream] = useState<Dream | null>(() => {
     try {
       const raw = localStorage.getItem("brothers-dream");
@@ -85,6 +92,23 @@ export default function MyBoxClient() {
       setSaved(text);
       speak("탐험일지를 저장했다!");
     } catch {}
+  }
+
+  function equip(code: string, treasureId: string) {
+    const next: Sockets = { ...sockets, [code]: treasureId };
+    setSockets(next);
+    saveSockets(next);
+    setSocketTarget(null);
+    speak("보물을 꽂아서 카드가 강해졌어!");
+  }
+
+  function unequip(code: string) {
+    const next: Sockets = { ...sockets };
+    delete next[code];
+    setSockets(next);
+    saveSockets(next);
+    setSocketTarget(null);
+    speak("보물을 뺐어!");
   }
 
   function resetAll() {
@@ -121,6 +145,9 @@ export default function MyBoxClient() {
   const jobCards = visitedJobs
     .map((c) => MOCK_JOBS.find((j) => j.code === c))
     .filter((j): j is (typeof MOCK_JOBS)[number] => !!j);
+  const owned = TREASURES.filter((t) => (inventory[t.id] ?? 0) > 0);
+  const strengthened = jobCards.filter((j) => sockets[j.code]).length;
+  const targetJob = socketTarget ? MOCK_JOBS.find((j) => j.code === socketTarget) : null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -129,8 +156,112 @@ export default function MyBoxClient() {
         <div className="mt-2 h-5 overflow-hidden rounded-full bg-stone-200">
           <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${progress}%` }} />
         </div>
-        <p className="mt-2 font-bold">퀴즈 최고 기록: {best}개 · 스탬프 {stamps.length}개 · 카드 {jobCards.length}장</p>
+        <p className="mt-2 font-bold">
+          퀴즈 최고 기록: {best}개 · 스탬프 {stamps.length}개 · 카드 {jobCards.length}장 · 보물 {treasureCount(inventory)}개
+        </p>
         <p className="font-black text-violet-700">🎖️ Lv.{levelFor(xp).lv} {levelFor(xp).name} ({xp} XP)</p>
+      </div>
+
+      <div className="rounded-3xl bg-white p-5 shadow">
+        <h2 className="text-2xl font-black">💎 내 보물 ({treasureCount(inventory)}개)</h2>
+        <p className="font-bold text-stone-500">동네탐험에서 랜덤으로 나와! 카드 소켓에 꽂으면 그 능력치가 올라가!</p>
+        {owned.length === 0 ? (
+          <div>
+            <p className="mt-2 font-bold">아직 보물이 없어. 동네탐험에서 스탬프를 모으다 보면 나와!</p>
+            <Link href="/town" className="mt-3 block rounded-2xl bg-emerald-300 px-4 py-3 text-center text-xl font-black">
+              탐험하러 가기
+            </Link>
+          </div>
+        ) : (
+          <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {owned.map((t) => (
+              <li key={t.id} className={`rounded-2xl bg-gradient-to-br p-[2px] ${TREASURE_STYLE[t.rarity].frame}`}>
+                <div className={`flex h-full flex-col items-center rounded-[14px] bg-gradient-to-br p-2 text-center ${TREASURE_STYLE[t.rarity].bg}`}>
+                  <span className="text-3xl">{t.emoji}</span>
+                  <span className="mt-0.5 text-[11px] font-black leading-tight">{t.name}</span>
+                  <span className="text-[10px] font-black text-stone-600">
+                    {t.stat}+{t.bonus}
+                  </span>
+                  <span className={`mt-0.5 rounded-full px-1.5 text-[10px] font-black ${TREASURE_STYLE[t.rarity].badge}`}>
+                    {t.rarity} ×{inventory[t.id]}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-3xl bg-white p-5 shadow">
+        <h2 className="text-2xl font-black">
+          💼 직업 카드 도감 ({jobCards.length}/{MOCK_JOBS.length})
+        </h2>
+        <p className="font-bold text-stone-500">
+          카드의 소켓에 보물을 꽂아 강화해봐! 지금까지 {strengthened}장 강화했어.
+        </p>
+
+        {targetJob && (
+          <div className="animate-pop mt-3 rounded-2xl border-4 border-amber-300 bg-amber-50 p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-lg font-black">
+                💠 {targetJob.name}에 꽂을 보물 고르기
+              </p>
+              <button type="button" onClick={() => setSocketTarget(null)} className="rounded-full bg-white px-3 py-1 font-black shadow">
+                닫기
+              </button>
+            </div>
+            {owned.length === 0 ? (
+              <p className="mt-2 font-bold text-stone-500">꽂을 보물이 없어. 동네탐험에서 보물을 먼저 찾아봐!</p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {owned.map((t) => {
+                  const on = sockets[targetJob.code] === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => equip(targetJob.code, t.id)}
+                      className={`rounded-2xl px-3 py-2 font-black shadow ${on ? "bg-amber-400" : "bg-white"}`}
+                    >
+                      {t.emoji} {t.name}
+                      <span className="ml-1 text-sm text-stone-600">
+                        {t.stat}+{t.bonus}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {socketFor(sockets, targetJob.code) && (
+              <button type="button" onClick={() => unequip(targetJob.code)} className="mt-3 rounded-2xl bg-stone-200 px-4 py-2 font-black">
+                🔌 보물 빼기
+              </button>
+            )}
+          </div>
+        )}
+
+        {jobCards.length === 0 ? (
+          <div>
+            <p className="mt-2 font-bold">아직 없어. 직업 도감에서 카드를 열어봐!</p>
+            <Link href="/jobs" className="mt-3 block rounded-2xl bg-sky-300 px-4 py-3 text-center text-xl font-black">
+              직업 도감 가기
+            </Link>
+          </div>
+        ) : (
+          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {jobCards.map((j) => {
+              const no = String(MOCK_JOBS.findIndex((x) => x.code === j.code) + 1).padStart(3, "0");
+              return (
+                <li key={j.code} className="flex flex-col gap-1">
+                  <JobCardFace job={j} no={no} socket={socketFor(sockets, j.code)} onSocketClick={() => setSocketTarget(j.code)} />
+                  <Link href={`/jobs/${j.code}`} className="rounded-xl bg-stone-100 py-1 text-center text-xs font-black text-stone-600">
+                    📖 {j.name} 도감 보기
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       <div className="rounded-3xl bg-white p-5 shadow">
@@ -144,49 +275,6 @@ export default function MyBoxClient() {
                 +{e.n} · {e.why || "열심히 했어!"} <span className="text-stone-400">{dateStr(e.t)}</span>
               </li>
             ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="rounded-3xl bg-white p-5 shadow">
-        <h2 className="text-2xl font-black">💼 직업 카드 도감 ({jobCards.length}/{MOCK_JOBS.length})</h2>
-        {jobCards.length === 0 ? (
-          <div>
-            <p className="mt-2 font-bold">아직 없어. 직업 도감에서 카드를 열어봐!</p>
-            <Link href="/jobs" className="mt-3 block rounded-2xl bg-sky-300 px-4 py-3 text-center text-xl font-black">
-              직업 도감 가기
-            </Link>
-          </div>
-        ) : (
-          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {jobCards.map((j) => {
-              const no = String(MOCK_JOBS.findIndex((x) => x.code === j.code) + 1).padStart(3, "0");
-              return (
-                <li key={j.code}>
-                  <Link
-                    href={`/jobs/${j.code}`}
-                    className={`block rounded-2xl border-4 p-2 text-center shadow ${RARITY_FRAME[j.rarity]}`}
-                  >
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-xs font-black text-stone-500">No.{no}</span>
-                      <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-black">{j.rarity}</span>
-                    </div>
-                    <div className="mx-auto mt-1 flex h-20 w-20 items-center justify-center rounded-full bg-white/70 text-5xl">
-                      {j.emoji}
-                    </div>
-                    <p className="mt-1 text-lg font-black">{j.name}</p>
-                    <p className="text-xs font-black text-stone-500">{j.field}</p>
-                    <p className="mt-1 text-xs font-bold">
-                      {(Object.entries(j.powers) as [string, number][]).map(([k, v]) => (
-                        <span key={k} className="mr-1">
-                          {POWER_EMOJI[k]}{v}
-                        </span>
-                      ))}
-                    </p>
-                  </Link>
-                </li>
-              );
-            })}
           </ul>
         )}
       </div>

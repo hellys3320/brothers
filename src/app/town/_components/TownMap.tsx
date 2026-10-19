@@ -4,6 +4,7 @@ import { useEffect, useRef, type MutableRefObject } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
 import lottie, { type AnimationItem } from "lottie-web";
 import type { TownFacility } from "@/lib/mock";
+import { distM, walkInfo } from "@/lib/realTown";
 import "leaflet/dist/leaflet.css";
 
 // 걷기 캐릭터: LottieFiles 무료 "Hiker Walking" (배낭 멘 탐험가, 디자이너 제작 벡터)
@@ -37,6 +38,12 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
   useEffect(() => {
     stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focus };
   });
+
+  // 핀 팝업: 장소 설명 + 집에서 거리/도보시간
+  const popupFor = (f: TownFacility) => {
+    const c = stateRef.current.center;
+    return `<b>${f.name}</b><br/>${f.easy}<br/>🧭 ${walkInfo(distM(c.lat, c.lng, f.lat, f.lng))}`;
+  };
 
   // 우리집 바로가기 + 장소 포커싱 API
   useEffect(() => {
@@ -103,7 +110,7 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
             iconAnchor: [20, 20],
           }),
         }).addTo(map);
-        m.bindPopup(`<b>${f.name}</b><br/>${f.easy}`);
+        m.bindPopup(popupFor(f));
         m.on("click", () => stateRef.current.onDiscover(f.id));
         markersRef.current[f.id] = m;
       }
@@ -135,7 +142,7 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
             iconAnchor: [20, 20],
           }),
         }).addTo(map);
-        m.bindPopup(`<b>${f.name}</b><br/>${f.easy}`);
+        m.bindPopup(popupFor(f));
         m.on("click", () => stateRef.current.onDiscover(f.id));
         markersRef.current[f.id] = m;
       }
