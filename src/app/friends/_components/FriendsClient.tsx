@@ -99,7 +99,7 @@ export default function FriendsClient() {
             onKeyDown={(e) => e.key === "Enter" && add()}
             placeholder="친구 코드 6자리"
             maxLength={6}
-            className="flex-1 rounded-2xl border-4 border-sky-300 p-3 text-center text-2xl font-black tracking-widest"
+            className="min-w-0 flex-1 rounded-2xl border-4 border-sky-300 p-3 text-center text-2xl font-black tracking-widest"
           />
           <button type="button" onClick={add} disabled={busy || !input.trim()} className="rounded-2xl bg-sky-400 px-6 py-3 text-xl font-black disabled:opacity-40">
             추가!

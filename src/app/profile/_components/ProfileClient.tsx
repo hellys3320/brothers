@@ -107,7 +107,7 @@ export default function ProfileClient() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={10}
-              className="flex-1 rounded-2xl border-4 border-amber-300 p-3 text-xl font-black"
+              className="min-w-0 flex-1 rounded-2xl border-4 border-amber-300 p-3 text-xl font-black"
             />
             <button type="button" onClick={saveNickname} disabled={!name.trim()} className="rounded-2xl bg-amber-400 px-6 py-3 text-xl font-black disabled:opacity-40">
               저장
@@ -142,7 +142,7 @@ export default function ProfileClient() {
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && search()}
                 placeholder="아파트·도로명 주소 (예: 연산4동 656-4)"
-                className="flex-1 rounded-2xl border-4 border-emerald-300 p-3 text-xl font-black"
+                className="min-w-0 flex-1 rounded-2xl border-4 border-emerald-300 p-3 text-xl font-black"
               />
               <button type="button" onClick={search} disabled={busy || !q.trim()} className="rounded-2xl bg-emerald-400 px-6 py-3 text-xl font-black disabled:opacity-40">
                 {busy ? "..." : "찾기"}

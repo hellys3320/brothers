@@ -383,7 +383,7 @@ export default function BattleClient() {
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 placeholder="방 코드 4자리"
                 maxLength={4}
-                className="flex-1 rounded-2xl border-4 border-red-200 p-3 text-center text-2xl font-black tracking-widest"
+                className="min-w-0 flex-1 rounded-2xl border-4 border-red-200 p-3 text-center text-2xl font-black tracking-widest"
               />
               <button type="button" onClick={() => joinBattle(joinCode)} className="rounded-2xl bg-red-300 px-6 py-3 text-xl font-black">
                 입장!
@@ -448,8 +448,8 @@ export default function BattleClient() {
           <h2 className="text-2xl font-black">👫 한 화면에서 둘이서!</h2>
           <p className="font-bold text-stone-500">번갈아 덱을 짜고 바로 붙어!</p>
           <div className="mt-2 flex gap-2">
-            <input value={p1name} onChange={(e) => setP1name(e.target.value)} placeholder="1P 이름" maxLength={6} className="flex-1 rounded-2xl border-4 border-sky-200 p-3 text-xl font-black" />
-            <input value={p2name} onChange={(e) => setP2name(e.target.value)} placeholder="2P 이름" maxLength={6} className="flex-1 rounded-2xl border-4 border-pink-200 p-3 text-xl font-black" />
+            <input value={p1name} onChange={(e) => setP1name(e.target.value)} placeholder="1P 이름" maxLength={6} className="min-w-0 flex-1 rounded-2xl border-4 border-sky-200 p-3 text-xl font-black" />
+            <input value={p2name} onChange={(e) => setP2name(e.target.value)} placeholder="2P 이름" maxLength={6} className="min-w-0 flex-1 rounded-2xl border-4 border-pink-200 p-3 text-xl font-black" />
           </div>
           <button
             type="button"

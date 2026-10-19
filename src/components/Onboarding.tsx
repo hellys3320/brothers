@@ -114,7 +114,7 @@ export default function Onboarding({ onDone }: { onDone: (me: MeProfile) => void
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && search()}
             placeholder="예: 염창동, 한빛아파트"
-            className="flex-1 rounded-2xl border-4 border-emerald-300 p-3 text-xl font-black"
+            className="min-w-0 flex-1 rounded-2xl border-4 border-emerald-300 p-3 text-xl font-black"
           />
           <button
             type="button"
