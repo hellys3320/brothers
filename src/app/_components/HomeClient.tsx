@@ -28,11 +28,8 @@ export default function HomeClient() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDaily(todayJob());
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLetter(getDailyLetter());
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMission(getDailyMission());
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMissionDone(letterDoneToday());
   }, []);
 
@@ -115,7 +112,7 @@ export default function HomeClient() {
         <Link href="/games" className="rounded-3xl bg-violet-300 p-6 text-center text-xl font-black shadow">
           🎮 직업 놀이터
         </Link>
-        <Link href="/quiz" className="rounded-3xl bg-yellow-300 p-6 text-center text-xl font-black shadow">
+        <Link href="/games?tab=quiz" className="rounded-3xl bg-yellow-300 p-6 text-center text-xl font-black shadow">
           🎯 오늘의 퀴즈
         </Link>
         <Link href="/mybox" className="rounded-3xl bg-pink-300 p-6 text-center text-xl font-black shadow">

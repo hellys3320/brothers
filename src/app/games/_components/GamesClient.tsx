@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { MOCK_JOBS } from "@/lib/mock";
 import { addXP } from "@/lib/xp";
 import { speak } from "@/lib/speak";
+import QuizRunner from "./QuizRunner";
 
-type Tab = "who" | "sos" | "vs";
+type Tab = "who" | "sos" | "vs" | "quiz";
 
 const SOS: Array<{ s: string; choices: string[]; answer: number }> = [
   { s: "불이 났어! 누구에게 연락할까?", choices: ["소방관", "제빵사", "사서", "미용사"], answer: 0 },
@@ -393,26 +395,39 @@ function VsGame() {
   );
 }
 
+const TABS: Array<{ k: Tab; label: string }> = [
+  { k: "who", label: "🕵️ 누구일까?" },
+  { k: "sos", label: "🚨 위급상황!" },
+  { k: "vs", label: "⚖️ 밸런스" },
+  { k: "quiz", label: "🎯 비밀퀴즈" },
+];
+
 export default function GamesClient() {
-  const [tab, setTab] = useState<Tab>("who");
+  // ?tab=quiz 같은 딥링크로 바로 열 수 있게
+  const params = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = params.get("tab");
+    return t === "quiz" || t === "sos" || t === "vs" ? t : "who";
+  });
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
-        {(["who", "sos", "vs"] as const).map((t) => (
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {TABS.map((t) => (
           <button
-            key={t}
+            key={t.k}
             type="button"
-            onClick={() => setTab(t)}
-            aria-pressed={tab === t}
-            className={`flex-1 rounded-2xl px-4 py-3 text-lg font-black shadow ${tab === t ? "bg-violet-400" : "bg-white"}`}
+            onClick={() => setTab(t.k)}
+            aria-pressed={tab === t.k}
+            className={`rounded-2xl px-2 py-3 text-base font-black shadow sm:text-lg ${tab === t.k ? "bg-violet-400" : "bg-white"}`}
           >
-            {t === "who" ? "🕵️ 누구일까?" : t === "sos" ? "🚨 위급상황!" : "⚖️ 밸런스게임"}
+            {t.label}
           </button>
         ))}
       </div>
       {tab === "who" && <WhoGame />}
       {tab === "sos" && <SosGame />}
       {tab === "vs" && <VsGame />}
+      {tab === "quiz" && <QuizRunner />}
       <p className="text-center font-bold text-stone-500">맞히면 XP! 수집함에서 레벨을 확인해봐!</p>
     </div>
   );

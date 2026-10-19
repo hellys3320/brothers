@@ -10,7 +10,6 @@ export const NAV_ITEMS = [
   { href: "/games", label: "게임", short: "게임", icon: "🎮" },
   { href: "/battle", label: "배틀", short: "배틀", icon: "⚔️" },
   { href: "/friends", label: "친구", short: "친구", icon: "👫" },
-  { href: "/quiz", label: "퀴즈", short: "퀴즈", icon: "❓" },
   { href: "/mybox", label: "수집함", short: "수집", icon: "🎒" },
   { href: "/profile", label: "내정보", short: "정보", icon: "🙋" },
 ];

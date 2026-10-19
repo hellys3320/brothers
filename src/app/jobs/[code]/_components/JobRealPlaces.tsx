@@ -82,7 +82,7 @@ export default function JobRealPlaces({ jobCode, jobName }: { jobCode: string; j
         <Link href="/town" className="flex-1 rounded-2xl bg-emerald-300 px-4 py-3 text-center text-lg font-black">
           동네 탐험하기
         </Link>
-        <Link href="/quiz" className="flex-1 rounded-2xl bg-yellow-200 px-4 py-3 text-center text-lg font-black">
+        <Link href="/games?tab=quiz" className="flex-1 rounded-2xl bg-yellow-200 px-4 py-3 text-center text-lg font-black">
           퀴즈 풀기
         </Link>
       </div>
