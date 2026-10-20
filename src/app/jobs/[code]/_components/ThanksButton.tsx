@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { addXP, getXP, levelFor } from "@/lib/xp";
 import { speak } from "@/lib/speak";
 
@@ -25,7 +25,13 @@ export default function ThanksButton({
   spot: string;
   locked: boolean;
 }) {
-  const [n, setN] = useState(() => loadThanks(code));
+  const [n, setN] = useState(0);
+
+  // 첫 렌더는 서버와 맞추고, 마운트 후 저장된 응원 수를 읽는다
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setN(loadThanks(code));
+  }, [code]);
 
   function send() {
     const next = n + 1;

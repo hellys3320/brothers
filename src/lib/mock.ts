@@ -7,6 +7,8 @@ export interface TownFacility {
   dong: string;
   easy: string;
   stamp: string;
+  /** 화면에 보여줄 종류 이름 (없으면 kind 사용) */
+  label?: string;
   safeLevel: "초록" | "노랑" | "빨강";
   lat: number;
   lng: number;

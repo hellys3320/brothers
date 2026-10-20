@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { missionsFor, loadMissions, saveMissions } from "@/lib/missions";
 import { addXP, getXP, levelFor } from "@/lib/xp";
 import { speak } from "@/lib/speak";
@@ -19,7 +19,13 @@ export default function MissionSection({
   field: JobField;
   locked: boolean;
 }) {
-  const [done, setDone] = useState<boolean[]>(() => loadMissions(code));
+  const [done, setDone] = useState<boolean[]>([false, false, false]);
+
+  // 첫 렌더는 서버와 맞추고, 마운트 후 저장된 미션을 읽는다
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDone(loadMissions(code));
+  }, [code]);
 
   if (locked) {
     return (
@@ -39,6 +45,8 @@ export default function MissionSection({
     const next = done.map((d, k) => (k === i ? true : d));
     setDone(next);
     saveMissions(code, next);
+    // 카드 미션 진행도(JobRealPlaces)를 바로 새로고침
+    window.dispatchEvent(new Event("brothers:missions"));
     addXP(10, `${name} 미션!`);
     if (next.every(Boolean)) {
       speak(`대단해! 오늘부터 너는 1일 ${name}! 체험 완료!`);

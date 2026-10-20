@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { MOCK_JOBS } from "@/lib/mock";
 import HyungnimTalk from "@/components/HyungnimTalk";
 import JobRealPlaces from "./_components/JobRealPlaces";
-import VisitRecorder from "./_components/VisitRecorder";
 import JobExtra from "./_components/JobExtra";
 
 export function generateStaticParams() {
@@ -31,7 +30,6 @@ export default async function JobDetailPage({ params }: { params: Promise<{ code
 
   return (
     <div className="flex flex-col gap-5">
-      <VisitRecorder code={code} />
       <Link href="/jobs" className="font-black text-stone-600">
         ← 직업 도감으로
       </Link>

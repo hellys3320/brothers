@@ -77,6 +77,9 @@ export default function JobMatcher() {
 
       <div className="rounded-3xl bg-white p-5 shadow">
         <h2 className="text-2xl font-black">🗂️ 직업 카드 {visited.length} / {MOCK_JOBS.length}</h2>
+        <p className="mt-1 font-bold text-stone-500">
+          카드는 <b>1일 체험 미션 3개</b> + <b>관련 장소 2곳</b>(있는 만큼)을 찾으면 얻을 수 있어!
+        </p>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}

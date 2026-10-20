@@ -17,7 +17,6 @@ interface Props {
   center: { lat: number; lng: number; dong: string };
   expedition: { lat: number; lng: number; id: string } | null;
   onArrive: (id: string) => void;
-  focus: { lat: number; lng: number; name: string } | null;
   focusPlaceId: string | null;
   onFocusDone: () => void;
   mapApiRef: MutableRefObject<MapApi | null>;
@@ -28,15 +27,15 @@ export interface MapApi {
   focusPlace: (id: string) => void;
 }
 
-export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focus, focusPlaceId, onFocusDone, mapApiRef }: Props) {
+export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focusPlaceId, onFocusDone, mapApiRef }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Record<string, Marker>>({});
   const homeRef = useRef<Marker | null>(null);
-  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive, focus });
+  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive });
 
   useEffect(() => {
-    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focus };
+    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive };
   });
 
   // 핀 팝업: 장소 설명 + 집에서 거리/도보시간
@@ -280,31 +279,6 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       anim = null;
     };
   }, [expId]);
-
-  // 직업 도감에서 넘어온 장소: 별 마커 + 확대 + 팝업
-  const focusKey = focus ? `${focus.lat},${focus.lng},${focus.name}` : "";
-  useEffect(() => {
-    if (!focusKey) return;
-    async function show() {
-      const L = (await import("leaflet")).default;
-      const map = mapRef.current;
-      if (!map) {
-        setTimeout(show, 500);
-        return;
-      }
-      const f = stateRef.current.focus;
-      if (!f) return;
-      map.flyTo([f.lat, f.lng], 17, { duration: 1 });
-      L.marker([f.lat, f.lng], {
-        icon: L.divIcon({ className: "", html: `<div style="font-size:40px">⭐</div>`, iconSize: [46, 46], iconAnchor: [23, 23] }),
-        zIndexOffset: 900,
-      })
-        .addTo(map)
-        .bindPopup(`<b>⭐ ${f.name}</b><br/>직업 도감에서 왔어!`)
-        .openPopup();
-    }
-    show();
-  }, [focusKey]);
 
   // 목록에서 장소를 탭하면 지도 포커싱
   useEffect(() => {

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { MapApi } from "./TownMap";
+import TownMapLazy from "./TownMapLazy";
 import { MOCK_TOWN, type FacilityKind, type TownFacility } from "@/lib/mock";
 import { fetchRealFacilities, fetchMorePlaces, loadCached, saveCached, dirWord, distM, walkInfo, type RealSource, type RealDebug, type ProgressStep } from "@/lib/realTown";
 import { addXP } from "@/lib/xp";
@@ -13,11 +13,7 @@ import { todayQuest, saveQuest, type TownQuest } from "@/lib/quest";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
 import { addTreasure, loadTreasures, saveTreasures, tryFindTreasure, type Treasure } from "@/lib/treasures";
-
-const TownMap = dynamic(() => import("./TownMap"), {
-  ssr: false,
-  loading: () => <p className="rounded-3xl bg-white p-6 text-xl font-black">🗺️ 지도를 준비중...</p>,
-});
+import { addJobVisit, awardJobCard, jobMissionReady } from "@/lib/jobMission";
 
 const KIND_COLOR: Record<FacilityKind, string> = {
   도서관: "bg-sky-200",
@@ -59,6 +55,34 @@ export default function TownExplorer() {
   const [init] = useState(initPlaces);
   const me = init.profile;
   const [places, setPlaces] = useState<TownFacility[]>(init.list);
+  // 직업 도감에서 넘어온 장소(?lat&lng&name&kind...)는 지도·목록에 '진짜 탐험 핀'으로 합친다
+  const focusKindRaw = searchParams.get("kind") ?? "";
+  const focusKind: FacilityKind = (Object.keys(KIND_COLOR) as FacilityKind[]).includes(focusKindRaw as FacilityKind)
+    ? (focusKindRaw as FacilityKind)
+    : "간식";
+  const focusPlaceId = hasFocus ? `job-${focus.lat.toFixed(5)}-${focus.lng.toFixed(5)}` : "";
+  const focusFacility: TownFacility | null = hasFocus
+    ? {
+        id: focusPlaceId,
+        name: focus.name,
+        kind: focusKind,
+        dong: me?.dong ?? "",
+        easy: searchParams.get("easy") || "직업 도감에서 찾은 장소!",
+        stamp: searchParams.get("stamp") || "📍",
+        label: searchParams.get("label") || undefined,
+        safeLevel: "초록",
+        lat: focus.lat,
+        lng: focus.lng,
+      }
+    : null;
+  // 같은 이름의 동네 장소가 이미 있으면 중복 핀을 만들지 않는다
+  const allPlaces: TownFacility[] = focusFacility
+    ? [focusFacility, ...places.filter((p) => p.id !== focusFacility.id && p.name !== focusFacility.name)]
+    : places;
+  // 직업카드 미션: 어느 직업의 장소인지, 몇 곳을 채워야 하는지
+  const focusJob = searchParams.get("job") ?? "";
+  const focusJobName = searchParams.get("jobName") ?? "";
+  const focusNeed = Number(searchParams.get("need") ?? "0") || 0;
   const [realMode, setRealMode] = useState<RealSource | null>(() => (init.real ? "overpass" : null));
   const [searching, setSearching] = useState(() => !init.real && init.profile !== null);
   const [failed, setFailed] = useState(false);
@@ -136,7 +160,7 @@ export default function TownExplorer() {
   const [travel, setTravel] = useState<TownFacility | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreEmpty, setMoreEmpty] = useState(false);
-  const [focusId, setFocusId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(() => focusPlaceId || null);
   const [questView, setQuestView] = useState<TownQuest | null>(() => todayQuest());
   const mapApi = useRef<MapApi | null>(null);
 
@@ -189,7 +213,7 @@ export default function TownExplorer() {
   }
 
   function discover(id: string) {
-    const f = places.find((x) => x.id === id);
+    const f = allPlaces.find((x) => x.id === id);
     if (!f || found.includes(id) || travel) return;
     // 목록모드면 지도를 켜야 형님이 걸어갈 수 있음
     if (listMode) setListMode(false);
@@ -201,9 +225,33 @@ export default function TownExplorer() {
   }
 
   function onArrive(id: string) {
-    const f = places.find((x) => x.id === id);
+    const f = allPlaces.find((x) => x.id === id);
     setTravel(null);
-    if (!f || found.includes(id)) return;
+    if (!f) return;
+    // 직업 상세에서 이어진 장소면 카드 미션 방문으로 기록
+    const jobHit = !!focusJob && !!focusFacility && id === focusFacility.id;
+    let jobCount = 0;
+    let cardWon = false;
+    if (jobHit) {
+      jobCount = addJobVisit(focusJob, f.id).length;
+      if (
+        focusNeed > 0 &&
+        jobCount >= focusNeed &&
+        jobMissionReady(focusJob, focusNeed) &&
+        awardJobCard(focusJob)
+      ) {
+        addXP(10, `${focusJobName || "직업"} 카드 획득!`);
+        cardWon = true;
+      }
+    }
+    if (found.includes(id)) {
+      if (cardWon) {
+        setCheer(`🎴 ${focusJobName || "직업"} 카드 획득!`);
+        setTimeout(() => setCheer(null), 2200);
+        speak(`직업카드 획득! ${focusJobName || "직업"}! 수집함에서 확인해봐!`);
+      }
+      return;
+    }
     const next = [...found, id];
     setFound(next);
     try {
@@ -235,8 +283,15 @@ export default function TownExplorer() {
       }
     } catch {}
     const gotNow = next.filter((n) => places.some((p) => p.id === n)).length;
-    speak(`${f.name} 도착! ${f.easy} 스탬프를 받았다! 수집함에 저장됐다!`);
-    setCheer(`${f.stamp} ${f.name} 찾았다! (${gotNow}/${places.length})`);
+    const jobMsg = jobHit ? ` 직업카드 미션 장소 ${jobCount}곳째!` : "";
+    speak(
+      `${f.name} 도착! ${f.easy} 스탬프를 받았다! 수집함에 저장됐다!${jobMsg}${cardWon ? " 직업카드 획득!" : ""}`
+    );
+    setCheer(
+      cardWon
+        ? `🎴 ${focusJobName || "직업"} 카드 획득!`
+        : `${f.stamp} ${f.name} 찾았다! (${gotNow}/${places.length})`
+    );
     setTimeout(() => setCheer(null), 2200);
     if (gotNow >= places.length) {
       setTimeout(() => speak("우와! 비밀을 다 찾았어! 너는 진짜 동네박사야! 수집함에서 기록표를 인쇄해봐!"), 2300);
@@ -282,6 +337,9 @@ export default function TownExplorer() {
           />
         </div>
         <p className="mt-1 text-sm font-bold text-stone-500">핀을 누르면 스탬프가 수집함에 저장돼!</p>
+        <p className="mt-1 text-sm font-bold text-amber-700">
+          💎 보물 힌트: 새 장소에 도착하면 55% 확률! 처음엔 꼭 1개, 전설은 10%!
+        </p>
       </div>
       {questView && (
         <div className="animate-pop rounded-3xl bg-gradient-to-r from-emerald-300 to-sky-300 p-4 text-center shadow">
@@ -362,14 +420,13 @@ export default function TownExplorer() {
       )}
 
       {listMode ? null : (
-        <TownMap
+        <TownMapLazy
           found={found}
           onDiscover={discover}
-          facilities={places}
+          facilities={allPlaces}
           center={center}
           expedition={travel ? { lat: travel.lat, lng: travel.lng, id: travel.id } : null}
           onArrive={onArrive}
-          focus={hasFocus ? focus : null}
           focusPlaceId={focusId}
           onFocusDone={() => setFocusId(null)}
           mapApiRef={mapApi}
@@ -377,7 +434,7 @@ export default function TownExplorer() {
       )}
       {hasFocus && (
         <p className="animate-pop rounded-2xl bg-violet-200 p-4 text-center text-xl font-black">
-          ⭐ {focus.name} 여기야! 핀을 눌러 탐험해봐!
+          ⭐ {focus.name} 여기야! 지도 핀을 누르거나 아래 목록에서 탐험을 시작해봐!
         </p>
       )}
       {travel && (
@@ -387,7 +444,7 @@ export default function TownExplorer() {
       )}
 
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {[...places]
+        {[...allPlaces]
           .sort((a, b) => Number(found.includes(a.id)) - Number(found.includes(b.id)))
           .map((f) => {
           const got = found.includes(f.id);
@@ -400,7 +457,7 @@ export default function TownExplorer() {
               className={`animate-pop rounded-3xl border-4 p-5 shadow ${got ? "border-green-500 bg-green-50" : "border-white bg-white"}`}
             >
               <span className={`inline-block rounded-full px-3 py-1 font-black ${KIND_COLOR[f.kind]}`}>
-                {f.stamp} {f.kind}
+                {f.stamp} {f.label ?? f.kind}
               </span>
               <button
                 type="button"

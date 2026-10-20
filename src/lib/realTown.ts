@@ -381,9 +381,25 @@ export interface JobPlace {
   id: string;
   name: string;
   easy: string;
+  /** 지도 핀 종류 (카카오/OSM) */
+  kind?: string;
+  /** 핀 이모지 */
+  stamp?: string;
   lat: number;
   lng: number;
 }
+
+// OSM 폴백에서 직업별 핀 종류
+const JOB_KIND: Record<string, string> = {
+  baker: "빵집",
+  nurse: "병원",
+  librarian: "도서관",
+  fire: "안전지킴이집",
+  toon: "간식",
+  drone: "공원",
+  teacher: "학교",
+  police: "안전지킴이집",
+};
 
 const JOB_FILTER: Record<string, string> = {
   baker: `nwr["shop"="bakery"](around:3000,LAT,LNG);nwr["craft"="bakery"](around:3000,LAT,LNG);`,
@@ -434,6 +450,8 @@ export async function fetchPlacesForJob(
         id: `osm-${el.type}-${el.id}`,
         name,
         easy: `${walkText(distM(lat, lng, plat, plng))} 걸려!`,
+        kind: JOB_KIND[jobCode] ?? "간식",
+        stamp: "📍",
         lat: plat,
         lng: plng,
       });

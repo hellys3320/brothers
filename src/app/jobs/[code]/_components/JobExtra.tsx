@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MissionSection from "./MissionSection";
 import ThanksButton from "./ThanksButton";
 import { getXP, levelFor } from "@/lib/xp";
@@ -20,8 +20,17 @@ export default function JobExtra({
   field: JobField;
   rarity: JobRarity;
 }) {
-  const [xp] = useState(() => getXP());
-  const [dong] = useState(() => loadMe()?.dong ?? "우리동네");
+  // 첫 렌더는 서버와 맞추고, 마운트 후 localStorage 값을 읽는다
+  const [xp, setXp] = useState(0);
+  const [dong, setDong] = useState("우리동네");
+
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setXp(getXP());
+    setDong(loadMe()?.dong ?? "우리동네");
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
+
   const locked = rarity === "레전드" && levelFor(xp).lv < 3;
 
   return (

@@ -41,20 +41,21 @@ export interface KakaoPlace {
 function toPlace(
   d: KakaoDoc,
   kind: KakaoPlace["kind"],
-  stamp: string
+  stamp: string,
+  kindWord?: string
 ): KakaoPlace | null {
   const lat = Number(d.y);
   const lng = Number(d.x);
   if (!d.place_name || !isFinite(lat) || !isFinite(lng)) return null;
   const m = Number(d.distance);
   const walk = isFinite(m) ? (m < 150 ? "바로 앞!" : `약 ${Math.round(m / 100) * 100}m!`) : "";
-  const kindWord = kind === "안전지킴이집" ? "위험할 때 도와주는 곳" : `진짜 ${kind}`;
+  const word = kindWord ?? (kind === "안전지킴이집" ? "위험할 때 도와주는 곳" : `진짜 ${kind}`);
   return {
     id: `kakao-${d.id}`,
     name: d.place_name,
     kind,
     stamp,
-    easy: `${kindWord}! ${walk}`.trim(),
+    easy: `${word}! ${walk}`.trim(),
     lat,
     lng,
   };
@@ -112,6 +113,16 @@ async function townPlaces(key: string, lat: number, lng: number, dong: string, r
 // 직업 상세용: 카드의 find 검색어로 우리동네 진짜 장소 조회
 import { MOCK_JOBS } from "@/lib/mock";
 
+// 직업 분야 → 지도 핀 종류(색) 매핑
+function kindForField(field: string): KakaoPlace["kind"] {
+  if (field === "먹거리") return "간식";
+  if (field === "배움") return "도서관";
+  if (field === "자연") return "공원";
+  if (field === "안전") return "안전지킴이집";
+  if (field === "돌봄") return "병원";
+  return "간식";
+}
+
 async function jobPlaces(
   key: string,
   job: string,
@@ -141,9 +152,10 @@ async function jobPlaces(
   const docs = await kakaoGet(key, "/v2/local/search/keyword.json", { query: `${dong} ${card.find}`, x, y, ...K, size: "8" });
   const filtered = card.find === "빵집" ? docs.filter(isRealBakery) : docs;
   const stamp: Record<string, string> = { baker: "🍞", librarian: "📚", fire: "🛟", toon: "📖" };
+  const kind = kindForField(card.field);
   return filtered
     .slice(0, 5)
-    .map((d) => toPlace(d, "빵집", stamp[job] ?? "📍"))
+    .map((d) => toPlace(d, kind, stamp[job] ?? "📍", card.spot))
     .filter((p): p is KakaoPlace => !!p);
 }
 

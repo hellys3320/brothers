@@ -164,17 +164,39 @@ export default function MyBoxClient() {
 
       <div className="rounded-3xl bg-white p-5 shadow">
         <h2 className="text-2xl font-black">💎 내 보물 ({treasureCount(inventory)}개)</h2>
-        <p className="font-bold text-stone-500">동네탐험에서 랜덤으로 나와! 카드 소켓에 꽂으면 그 능력치가 올라가!</p>
-        {owned.length === 0 ? (
-          <div>
-            <p className="mt-2 font-bold">아직 보물이 없어. 동네탐험에서 스탬프를 모으다 보면 나와!</p>
-            <Link href="/town" className="mt-3 block rounded-2xl bg-emerald-300 px-4 py-3 text-center text-xl font-black">
-              탐험하러 가기
-            </Link>
-          </div>
-        ) : (
-          <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {owned.map((t) => (
+        <p className="font-bold text-stone-500">
+          도감 {owned.length}/{TREASURES.length} 종류 · 카드 소켓에 꽂으면 그 능력치가 올라가!
+        </p>
+        <div className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm font-bold text-stone-700">
+          <p className="text-base font-black">💡 보물 힌트</p>
+          <p>· 동네탐험 지도에서 <b>새 장소에 도착할 때마다</b> 랜덤으로 나와!</p>
+          <p>· 처음엔 꼭 1개, 그다음엔 55% 확률!</p>
+          <p>· 반짝 60% · 빛나는 30% · 전설 10%</p>
+          <p>· 같은 보물도 여러 개 모을 수 있어. ??? 자리를 하나씩 채워봐!</p>
+        </div>
+        {owned.length === 0 && (
+          <p className="mt-3 font-bold">아직 보물이 없어. 동네탐험에서 스탬프를 모으다 보면 나와!</p>
+        )}
+        <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {TREASURES.map((t) => {
+            const n = inventory[t.id] ?? 0;
+            if (n === 0) {
+              return (
+                <li
+                  key={t.id}
+                  className="rounded-2xl border-2 border-dashed border-stone-300 bg-stone-50 p-2 text-center"
+                >
+                  <span className="text-3xl">❓</span>
+                  <span className="mt-0.5 block text-[11px] font-black leading-tight text-stone-400">???</span>
+                  <span
+                    className={`mt-0.5 inline-block rounded-full px-1.5 text-[10px] font-black ${TREASURE_STYLE[t.rarity].badge}`}
+                  >
+                    {t.rarity}
+                  </span>
+                </li>
+              );
+            }
+            return (
               <li key={t.id} className={`rounded-2xl bg-gradient-to-br p-[2px] ${TREASURE_STYLE[t.rarity].frame}`}>
                 <div className={`flex h-full flex-col items-center rounded-[14px] bg-gradient-to-br p-2 text-center ${TREASURE_STYLE[t.rarity].bg}`}>
                   <span className="text-3xl">{t.emoji}</span>
@@ -183,12 +205,17 @@ export default function MyBoxClient() {
                     {t.stat}+{t.bonus}
                   </span>
                   <span className={`mt-0.5 rounded-full px-1.5 text-[10px] font-black ${TREASURE_STYLE[t.rarity].badge}`}>
-                    {t.rarity} ×{inventory[t.id]}
+                    {t.rarity} ×{n}
                   </span>
                 </div>
               </li>
-            ))}
-          </ul>
+            );
+          })}
+        </ul>
+        {owned.length === 0 && (
+          <Link href="/town" className="mt-3 block rounded-2xl bg-emerald-300 px-4 py-3 text-center text-xl font-black">
+            탐험하러 가기
+          </Link>
         )}
       </div>
 
@@ -242,7 +269,9 @@ export default function MyBoxClient() {
 
         {jobCards.length === 0 ? (
           <div>
-            <p className="mt-2 font-bold">아직 없어. 직업 도감에서 카드를 열어봐!</p>
+            <p className="mt-2 font-bold">
+              아직 없어. 직업 도감에서 <b>체험 미션 3개</b>와 <b>관련 장소</b>를 찾으면 카드가 생겨!
+            </p>
             <Link href="/jobs" className="mt-3 block rounded-2xl bg-sky-300 px-4 py-3 text-center text-xl font-black">
               직업 도감 가기
             </Link>
