@@ -10,7 +10,7 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col gap-5">
       <h1 className="text-3xl font-black">🪪 내 정보</h1>
-      <HyungnimTalk text="네 이름과 우리집을 확인하고 바꿀 수 있어!" />
+      <HyungnimTalk text="네 이름·우리집·학교를 확인하고 바꿀 수 있어!" />
       <ProfileClient />
       <LevelTable />
     </div>

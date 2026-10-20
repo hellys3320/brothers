@@ -3,6 +3,8 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { searchHome, reverseDong, saveMe, DEFAULT_AVATAR, type MeProfile } from "@/lib/me";
+import type { SchoolInfo } from "@/lib/school";
+import SchoolSearch from "./SchoolSearch";
 import { speak } from "@/lib/speak";
 
 const HomePicker = dynamic(() => import("./HomePicker"), {
@@ -21,6 +23,8 @@ export default function Onboarding({ onDone }: { onDone: (me: MeProfile) => void
   const [picked, setPicked] = useState<MeProfile | null>(null);
   const [home, setHome] = useState<{ lat: number; lng: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<MeProfile | null>(null);
+  const [school, setSchool] = useState<SchoolInfo | null>(null);
 
   async function search() {
     if (!q.trim()) return;
@@ -54,8 +58,21 @@ export default function Onboarding({ onDone }: { onDone: (me: MeProfile) => void
       lng: home.lng,
       label: rev.label,
     };
+    setDraft(me);
+    setSaving(false);
+    setStep(3);
+    speak("우리집 저장! 이제 우리 학교를 찾아볼까?");
+  }
+
+  function finish(withSchool: SchoolInfo | null) {
+    if (!draft) return;
+    const me: MeProfile = withSchool ? { ...draft, school: withSchool } : draft;
     saveMe(me);
-    speak(`${me.nickname}! 우리집 저장 완료! ${me.dong} 탐험 시작!`);
+    speak(
+      withSchool
+        ? `${me.nickname}! ${withSchool.name} 급식도 볼 수 있어!`
+        : `${me.nickname}! ${me.dong} 탐험 시작!`
+    );
     onDone(me);
   }
 
@@ -150,18 +167,71 @@ export default function Onboarding({ onDone }: { onDone: (me: MeProfile) => void
     );
   }
 
+  if (step === 2) {
+    return (
+      <div className="animate-pop rounded-3xl bg-white p-6 text-center shadow-lg">
+        <h2 className="text-2xl font-black">🏠를 우리집 앞에 놓아줘!</h2>
+        {picked && home && <HomePicker lat={picked.lat} lng={picked.lng} onMove={(la, ln) => setHome({ lat: la, lng: ln })} />}
+        <button
+          type="button"
+          onClick={confirm}
+          disabled={saving || !home}
+          className="mt-3 w-full rounded-2xl bg-amber-400 px-4 py-4 text-2xl font-black shadow disabled:opacity-40"
+        >
+          {saving ? "저장 중..." : "여기가 우리집! 🏠"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-pop rounded-3xl bg-white p-6 text-center shadow-lg">
-      <h2 className="text-2xl font-black">🏠를 우리집 앞에 놓아줘!</h2>
-      {picked && home && <HomePicker lat={picked.lat} lng={picked.lng} onMove={(la, ln) => setHome({ lat: la, lng: ln })} />}
-      <button
-        type="button"
-        onClick={confirm}
-        disabled={saving || !home}
-        className="mt-3 w-full rounded-2xl bg-amber-400 px-4 py-4 text-2xl font-black shadow disabled:opacity-40"
-      >
-        {saving ? "저장 중..." : "여기가 우리집! 🏠"}
-      </button>
+      <p className="text-6xl">🏫</p>
+      <h2 className="mt-2 text-3xl font-black">우리 학교는 어디야?</h2>
+      <p className="mt-1 font-bold text-stone-500">
+        학교를 정하면 홈에서 오늘의 급식도 알려줄게!
+      </p>
+
+      {school ? (
+        <div className="mt-3">
+          <div className="rounded-2xl bg-sky-50 p-4 text-left">
+            <p className="text-xl font-black">🏫 {school.name}</p>
+            <p className="mt-1 text-sm font-bold text-stone-500">
+              {school.kind} · {school.officeName}
+            </p>
+            <p className="text-sm font-bold text-stone-500">{school.address}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => finish(school)}
+            className="mt-3 w-full rounded-2xl bg-sky-400 px-4 py-4 text-2xl font-black shadow"
+          >
+            이 학교가 맞아! 🍱
+          </button>
+          <button
+            type="button"
+            onClick={() => setSchool(null)}
+            className="mt-2 w-full rounded-2xl bg-stone-100 px-4 py-2 font-black"
+          >
+            다시 찾기
+          </button>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <SchoolSearch onSelect={setSchool} autoFocus />
+          <button
+            type="button"
+            onClick={() => finish(null)}
+            className="mt-3 w-full rounded-2xl bg-stone-100 px-4 py-2 font-black"
+          >
+            학교는 나중에 정할게
+          </button>
+        </div>
+      )}
+
+      <p className="mt-3 text-xs font-bold text-stone-400">
+        급식 정보는 나이스(NEIS)에서 가져와.
+      </p>
     </div>
   );
 }

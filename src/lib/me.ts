@@ -1,4 +1,6 @@
 // 내 프로필 (로그인 없이 이 기기에만 저장)
+import type { SchoolInfo } from "./school";
+
 export interface MeProfile {
   nickname: string;
   avatar: string;
@@ -6,6 +8,7 @@ export interface MeProfile {
   lat: number;
   lng: number;
   label: string;
+  school?: SchoolInfo;
 }
 
 export const AVATARS = ["😀", "😎", "🤩", "🥳", "😺", "🐶", "🐰", "🐯", "🦊", "🐼", "🐸", "🦄"];
@@ -21,6 +24,9 @@ export function loadMe(): MeProfile | null {
     const p = JSON.parse(raw) as MeProfile;
     if (!p.nickname || !p.dong) return null;
     if (!p.avatar) p.avatar = DEFAULT_AVATAR;
+    if (p.school && (!p.school.officeCode || !p.school.schoolCode || !p.school.name)) {
+      delete p.school;
+    }
     return p;
   } catch {
     return null;
@@ -30,6 +36,9 @@ export function loadMe(): MeProfile | null {
 export function saveMe(p: MeProfile) {
   try {
     localStorage.setItem(KEY, JSON.stringify(p));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("brothers-me", { detail: p }));
+    }
   } catch {}
 }
 

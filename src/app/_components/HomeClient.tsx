@@ -5,6 +5,7 @@ import Link from "next/link";
 import Onboarding from "@/components/Onboarding";
 import LevelBadge from "@/components/LevelBadge";
 import WeatherCard from "@/components/WeatherCard";
+import SchoolMealCard from "@/components/SchoolMealCard";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { MOCK_JOBS } from "@/lib/mock";
 import { addXP } from "@/lib/xp";
@@ -33,6 +34,22 @@ export default function HomeClient() {
     setMissionDone(letterDoneToday());
   }, []);
 
+  // 학교를 바꾸고 돌아왔을 때도 새 프로필을 바로 반영한다.
+  useEffect(() => {
+    const sync = () => {
+      const next = loadMe();
+      setMe((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+    };
+    window.addEventListener("brothers-me", sync);
+    window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      window.removeEventListener("brothers-me", sync);
+      window.removeEventListener("focus", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, []);
+
   function claimMission() {
     if (!mission || missionDone) return;
     markLetterDone();
@@ -45,7 +62,7 @@ export default function HomeClient() {
     return (
       <div className="flex flex-col gap-4">
         <Onboarding onDone={setMe} />
-        <p className="text-center font-bold text-stone-500">이름과 집은 이 기기에만 저장돼. 로그인은 없어!</p>
+        <p className="text-center font-bold text-stone-500">이름·집·학교는 이 기기에만 저장돼. 로그인은 없어!</p>
       </div>
     );
   }
@@ -67,6 +84,8 @@ export default function HomeClient() {
       <LevelBadge />
 
       <WeatherCard />
+
+      <SchoolMealCard key={me.school?.schoolCode ?? "no-school"} school={me.school} />
 
       <div className="rounded-3xl bg-amber-100 p-5 shadow">
         <p className="font-black text-stone-500">💌 형님 우체통 (오늘의 편지)</p>

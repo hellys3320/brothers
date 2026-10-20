@@ -5,6 +5,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { loadMe, saveMe, searchHome, reverseDong, type MeProfile } from "@/lib/me";
+import type { SchoolInfo } from "@/lib/school";
+import SchoolSearch from "@/components/SchoolSearch";
 import { getXP, levelFor } from "@/lib/xp";
 import { speak } from "@/lib/speak";
 
@@ -26,6 +28,8 @@ export default function ProfileClient() {
   const [picked, setPicked] = useState<MeProfile | null>(null);
   const [home, setHome] = useState<{ lat: number; lng: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [editSchool, setEditSchool] = useState(false);
+  const [schoolPicked, setSchoolPicked] = useState<SchoolInfo | null>(null);
 
   if (!me) {
     return (
@@ -84,6 +88,16 @@ export default function ProfileClient() {
     speak(`${rev.dong}으로 이사 완료!`);
   }
 
+  function saveSchool() {
+    if (!me || !schoolPicked) return;
+    const next = { ...me, school: schoolPicked };
+    saveMe(next);
+    setMe(next);
+    setEditSchool(false);
+    setSchoolPicked(null);
+    speak(`${schoolPicked.name} 저장! 이제 급식도 볼 수 있어!`);
+  }
+
   const lv = levelFor(xp);
 
   return (
@@ -92,6 +106,7 @@ export default function ProfileClient() {
         <p className="text-6xl">🕵️</p>
         <h1 className="mt-1 text-3xl font-black">{me.nickname}</h1>
         <p className="text-xl font-black">🏠 {me.label || me.dong}</p>
+        <p className="text-sm font-black">🏫 {me.school?.name ?? "학교 미설정"}</p>
         <p className="mt-1 font-black text-violet-800">🎖️ Lv.{lv.lv} {lv.name} ({xp} XP)</p>
       </div>
 
@@ -164,6 +179,72 @@ export default function ProfileClient() {
         )}
       </div>
 
+      <div id="school" className="rounded-3xl bg-white p-5 shadow">
+        <h2 className="text-2xl font-black">🏫 우리학교</h2>
+        {!editSchool ? (
+          <div>
+            <p className="mt-2 text-lg font-black">
+              {me.school ? me.school.name : "아직 학교를 정하지 않았어."}
+            </p>
+            {me.school && (
+              <>
+                <p className="text-sm font-bold text-stone-500">
+                  {me.school.kind} · {me.school.officeName}
+                </p>
+                <p className="text-sm font-bold text-stone-500">{me.school.address}</p>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setEditSchool(true);
+                setSchoolPicked(null);
+              }}
+              className="mt-2 w-full rounded-2xl bg-sky-300 px-4 py-3 text-xl font-black"
+            >
+              {me.school ? "학교 바꾸기" : "학교 찾기"}
+            </button>
+          </div>
+        ) : schoolPicked ? (
+          <div>
+            <div className="mt-2 rounded-2xl bg-sky-50 p-4">
+              <p className="text-lg font-black">🏫 {schoolPicked.name}</p>
+              <p className="text-sm font-bold text-stone-500">
+                {schoolPicked.kind} · {schoolPicked.officeName}
+              </p>
+              <p className="text-sm font-bold text-stone-500">{schoolPicked.address}</p>
+            </div>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSchoolPicked(null)}
+                className="flex-1 rounded-2xl bg-stone-200 px-4 py-3 text-xl font-black"
+              >
+                다시 찾기
+              </button>
+              <button
+                type="button"
+                onClick={saveSchool}
+                className="flex-1 rounded-2xl bg-sky-400 px-4 py-3 text-xl font-black"
+              >
+                이 학교로 저장!
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <SchoolSearch onSelect={setSchoolPicked} autoFocus />
+            <button
+              type="button"
+              onClick={() => setEditSchool(false)}
+              className="mt-2 w-full rounded-2xl bg-stone-100 px-4 py-2 font-black"
+            >
+              그만두기
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <Link href="/mybox" className="rounded-3xl bg-pink-300 p-5 text-center text-xl font-black shadow">
           🎒 수집함
@@ -175,7 +256,7 @@ export default function ProfileClient() {
 
       <div className="rounded-3xl bg-red-50 p-5 text-center shadow">
         <h2 className="text-xl font-black">🗑️ 처음부터 시작하기</h2>
-        <p className="font-bold text-stone-500">이름·우리집·도장·XP 전부 지워져!</p>
+        <p className="font-bold text-stone-500">이름·우리집·학교·도장·XP 전부 지워져!</p>
         <button
           type="button"
           onClick={() => {
