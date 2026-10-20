@@ -23,12 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Suspense>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">{children}</main>
-        <footer className="border-t-2 border-amber-200 bg-white/70 pb-24 sm:pb-0">
-          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-sm font-bold text-stone-600">
-            <span>나라 통계를 쉬운 말로 바꿨어요. 로그인 없어요.</span>
-          </div>
-        </footer>
+        <main className="mx-auto w-full max-w-4xl flex-1 px-4 pt-6 pb-24 sm:pb-6">{children}</main>
       </body>
     </html>
   );
