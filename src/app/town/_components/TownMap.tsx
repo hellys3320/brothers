@@ -22,6 +22,19 @@ interface Props {
   mapApiRef: MutableRefObject<MapApi | null>;
 }
 
+// 직업 도감에서 온 장소는 지도에서 ⭐로 크게 표시하고, 아직 못 찾은 핀은 흐리게.
+function markerHtml(f: TownFacility, found: string[], focusPlaceId: string | null): string {
+  const isFocus = f.id === focusPlaceId;
+  const seen = found.includes(f.id);
+  const size = isFocus ? 42 : 32;
+  const style = isFocus
+    ? "filter:drop-shadow(0 0 7px #fbbf24) drop-shadow(0 0 3px #f59e0b);"
+    : seen
+      ? ""
+      : "filter:grayscale(1);opacity:.6";
+  return `<div style="font-size:${size}px;line-height:1;${style}">${isFocus ? "⭐" : f.stamp}</div>`;
+}
+
 export interface MapApi {
   goHome: () => void;
   focusPlace: (id: string) => void;
@@ -32,10 +45,10 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Record<string, Marker>>({});
   const homeRef = useRef<Marker | null>(null);
-  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive });
+  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive, focusPlaceId });
 
   useEffect(() => {
-    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive };
+    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focusPlaceId };
   });
 
   // 핀 팝업: 장소 설명 + 집에서 거리/도보시간
@@ -78,9 +91,11 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
     async function init() {
       const L = (await import("leaflet")).default;
       if (cancelled || !divRef.current || mapRef.current) return;
-      const { facilities: facs, center: c, found: f0 } = stateRef.current;
+      const { facilities: facs, center: c, found: f0, focusPlaceId: fid } = stateRef.current;
+      // 직업 도감에서 넘어왔으면 처음부터 그 장소(⭐)가 보이게 시작한다.
+      const start = fid ? facs.find((f) => f.id === fid) : null;
 
-      const map = L.map(divRef.current).setView([c.lat, c.lng], 16);
+      const map = L.map(divRef.current).setView(start ? [start.lat, start.lng] : [c.lat, c.lng], 16);
       mapRef.current = map;
 
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -101,13 +116,16 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       homeRef.current = home;
 
       for (const f of facs) {
+        const isFocus = f.id === fid;
+        const box = isFocus ? 46 : 40;
         const m = L.marker([f.lat, f.lng], {
           icon: L.divIcon({
             className: "",
-            html: `<div style="font-size:32px;${f0.includes(f.id) ? "" : "filter:grayscale(1);opacity:.6"}">${f.stamp}</div>`,
-            iconSize: [40, 40],
-            iconAnchor: [20, 20],
+            html: markerHtml(f, f0, fid),
+            iconSize: [box, box],
+            iconAnchor: [box / 2, box / 2],
           }),
+          zIndexOffset: isFocus ? 500 : 0,
         }).addTo(map);
         m.bindPopup(popupFor(f));
         m.on("click", () => stateRef.current.onDiscover(f.id));
@@ -133,13 +151,17 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       }
       markersRef.current = {};
       for (const f of stateRef.current.facilities) {
+        const st = stateRef.current;
+        const isFocus = f.id === st.focusPlaceId;
+        const box = isFocus ? 46 : 40;
         const m = L.marker([f.lat, f.lng], {
           icon: L.divIcon({
             className: "",
-            html: `<div style="font-size:32px;${stateRef.current.found.includes(f.id) ? "" : "filter:grayscale(1);opacity:.6"}">${f.stamp}</div>`,
-            iconSize: [40, 40],
-            iconAnchor: [20, 20],
+            html: markerHtml(f, st.found, st.focusPlaceId),
+            iconSize: [box, box],
+            iconAnchor: [box / 2, box / 2],
           }),
+          zIndexOffset: isFocus ? 500 : 0,
         }).addTo(map);
         m.bindPopup(popupFor(f));
         m.on("click", () => stateRef.current.onDiscover(f.id));
@@ -155,12 +177,15 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       for (const f of stateRef.current.facilities) {
         const m = markersRef.current[f.id];
         if (!m) continue;
+        const st = stateRef.current;
+        const isFocus = f.id === st.focusPlaceId;
+        const box = isFocus ? 46 : 40;
         m.setIcon(
           L.divIcon({
             className: "",
-            html: `<div style="font-size:32px;${found.includes(f.id) ? "" : "filter:grayscale(1);opacity:.6"}">${f.stamp}</div>`,
-            iconSize: [40, 40],
-            iconAnchor: [20, 20],
+            html: markerHtml(f, st.found, st.focusPlaceId),
+            iconSize: [box, box],
+            iconAnchor: [box / 2, box / 2],
           })
         );
       }
@@ -299,7 +324,8 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
         return;
       }
       tries++;
-      if (!stop && tries < 10) setTimeout(attempt, 400);
+      // 지도(Leaflet) 청크가 늦게 뜨는 경우도 있어 넉넉히 기다린다 (최대 20초)
+      if (!stop && tries < 50) setTimeout(attempt, 400);
       else onFocusDone();
     }
     attempt();

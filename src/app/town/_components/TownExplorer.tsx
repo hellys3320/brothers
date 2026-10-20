@@ -164,6 +164,13 @@ export default function TownExplorer() {
   const [questView, setQuestView] = useState<TownQuest | null>(() => todayQuest());
   const mapApi = useRef<MapApi | null>(null);
 
+  // URL의 직업 장소가 바뀌면 지도도 그 장소로 다시 포커스한다.
+  // (처음 렌더에서 searchParams가 비어 있어도, 값이 들어오는 순간 별표 핀으로 이동)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (focusPlaceId) setFocusId(focusPlaceId);
+  }, [focusPlaceId]);
+
   // 내 동네면 진짜 장소로 교체 (캐시 우선, miss면 네트워크)
   useEffect(() => {
     if (!me || realMode) return;
