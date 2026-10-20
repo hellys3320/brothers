@@ -16,27 +16,43 @@ export interface Treasure {
   bonus: number;
 }
 
+// 5개 능력치 × 6종 = 30종 (반짝·빛나는·전설 각 10종)
 export const TREASURES: Treasure[] = [
   // 💪 힘
   { id: "rock", name: "단단한 주먹돌", emoji: "🪨", rarity: "반짝", stat: "힘", bonus: 1 },
+  { id: "rope", name: "질긴 밧줄", emoji: "🪢", rarity: "반짝", stat: "힘", bonus: 1 },
   { id: "glove", name: "힘센 글러브", emoji: "🥊", rarity: "빛나는", stat: "힘", bonus: 2 },
+  { id: "hammer", name: "번쩍 망치", emoji: "🔨", rarity: "빛나는", stat: "힘", bonus: 2 },
   { id: "dumbbell", name: "용기의 아령", emoji: "🏋️", rarity: "전설", stat: "힘", bonus: 3 },
+  { id: "shield", name: "용사의 방패", emoji: "🛡️", rarity: "전설", stat: "힘", bonus: 3 },
   // 🗣️ 말하기
   { id: "shell", name: "소라 마이크", emoji: "🐚", rarity: "반짝", stat: "말하기", bonus: 1 },
+  { id: "parrot", name: "수다쟁이 앵무새", emoji: "🦜", rarity: "반짝", stat: "말하기", bonus: 1 },
   { id: "megaphone", name: "우렁찬 확성기", emoji: "📣", rarity: "빛나는", stat: "말하기", bonus: 2 },
+  { id: "storybook", name: "이야기꾼의 책", emoji: "📚", rarity: "빛나는", stat: "말하기", bonus: 2 },
   { id: "goldmic", name: "황금 마이크", emoji: "🎙️", rarity: "전설", stat: "말하기", bonus: 3 },
+  { id: "radio", name: "은하 라디오", emoji: "📻", rarity: "전설", stat: "말하기", bonus: 3 },
   // 🎨 그리기
   { id: "crayon", name: "무지개 크레파스", emoji: "🖍️", rarity: "반짝", stat: "그리기", bonus: 1 },
+  { id: "pencil", name: "알록달록 색연필", emoji: "✏️", rarity: "반짝", stat: "그리기", bonus: 1 },
   { id: "paint", name: "신비한 물감", emoji: "🎨", rarity: "빛나는", stat: "그리기", bonus: 2 },
+  { id: "sketchbook", name: "마법 스케치북", emoji: "📒", rarity: "빛나는", stat: "그리기", bonus: 2 },
   { id: "legendbrush", name: "전설의 붓", emoji: "🖌️", rarity: "전설", stat: "그리기", bonus: 3 },
+  { id: "palette", name: "무지개 팔레트", emoji: "🌈", rarity: "전설", stat: "그리기", bonus: 3 },
   // 🔍 관찰
   { id: "magnifier", name: "작은 돋보기", emoji: "🔎", rarity: "반짝", stat: "관찰", bonus: 1 },
+  { id: "flashlight", name: "탐정 손전등", emoji: "🔦", rarity: "반짝", stat: "관찰", bonus: 1 },
   { id: "telescope", name: "별보는 망원경", emoji: "🔭", rarity: "빛나는", stat: "관찰", bonus: 2 },
+  { id: "map", name: "비밀 지도", emoji: "🗺️", rarity: "빛나는", stat: "관찰", bonus: 2 },
   { id: "eagleeye", name: "매의 눈 렌즈", emoji: "👁️", rarity: "전설", stat: "관찰", bonus: 3 },
+  { id: "crystalball", name: "별빛 수정 구슬", emoji: "🔮", rarity: "전설", stat: "관찰", bonus: 3 },
   // ✋ 손재주
   { id: "thread", name: "튼튼한 실타래", emoji: "🧵", rarity: "반짝", stat: "손재주", bonus: 1 },
+  { id: "needle", name: "반짝 바늘", emoji: "🪡", rarity: "반짝", stat: "손재주", bonus: 1 },
   { id: "toolbox", name: "만능 공구함", emoji: "🧰", rarity: "빛나는", stat: "손재주", bonus: 2 },
+  { id: "ruler", name: "척척 접이식 자", emoji: "📏", rarity: "빛나는", stat: "손재주", bonus: 2 },
   { id: "scissors", name: "신비의 가위", emoji: "✂️", rarity: "전설", stat: "손재주", bonus: 3 },
+  { id: "gear", name: "황금 톱니바퀴", emoji: "⚙️", rarity: "전설", stat: "손재주", bonus: 3 },
 ];
 
 export const TREASURE_STYLE: Record<TreasureRarity, { frame: string; bg: string; badge: string }> = {
