@@ -435,6 +435,7 @@ export default function TownExplorer() {
           expedition={travel ? { lat: travel.lat, lng: travel.lng, id: travel.id } : null}
           onArrive={onArrive}
           focusPlaceId={focusId}
+          starPlaceId={focusPlaceId || null}
           onFocusDone={() => setFocusId(null)}
           mapApiRef={mapApi}
         />

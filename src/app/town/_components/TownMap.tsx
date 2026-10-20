@@ -18,21 +18,23 @@ interface Props {
   expedition: { lat: number; lng: number; id: string } | null;
   onArrive: (id: string) => void;
   focusPlaceId: string | null;
+  /** 직업 도감에서 넘어온 장소 — 포커스가 끝나도 지도에 ⭐로 계속 남는다 */
+  starPlaceId: string | null;
   onFocusDone: () => void;
   mapApiRef: MutableRefObject<MapApi | null>;
 }
 
 // 직업 도감에서 온 장소는 지도에서 ⭐로 크게 표시하고, 아직 못 찾은 핀은 흐리게.
-function markerHtml(f: TownFacility, found: string[], focusPlaceId: string | null): string {
-  const isFocus = f.id === focusPlaceId;
+function markerHtml(f: TownFacility, found: string[], starPlaceId: string | null): string {
+  const isStar = f.id === starPlaceId;
   const seen = found.includes(f.id);
-  const size = isFocus ? 42 : 32;
-  const style = isFocus
+  const size = isStar ? 42 : 32;
+  const style = isStar
     ? "filter:drop-shadow(0 0 7px #fbbf24) drop-shadow(0 0 3px #f59e0b);"
     : seen
       ? ""
       : "filter:grayscale(1);opacity:.6";
-  return `<div style="font-size:${size}px;line-height:1;${style}">${isFocus ? "⭐" : f.stamp}</div>`;
+  return `<div style="font-size:${size}px;line-height:1;${style}">${isStar ? "⭐" : f.stamp}</div>`;
 }
 
 export interface MapApi {
@@ -40,15 +42,15 @@ export interface MapApi {
   focusPlace: (id: string) => void;
 }
 
-export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focusPlaceId, onFocusDone, mapApiRef }: Props) {
+export default function TownMap({ found, onDiscover, facilities, center, expedition, onArrive, focusPlaceId, starPlaceId, onFocusDone, mapApiRef }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Record<string, Marker>>({});
   const homeRef = useRef<Marker | null>(null);
-  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive, focusPlaceId });
+  const stateRef = useRef({ found, onDiscover, facilities, center, expedition, onArrive, focusPlaceId, starPlaceId });
 
   useEffect(() => {
-    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focusPlaceId };
+    stateRef.current = { found, onDiscover, facilities, center, expedition, onArrive, focusPlaceId, starPlaceId };
   });
 
   // 핀 팝업: 장소 설명 + 집에서 거리/도보시간
@@ -91,9 +93,10 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
     async function init() {
       const L = (await import("leaflet")).default;
       if (cancelled || !divRef.current || mapRef.current) return;
-      const { facilities: facs, center: c, found: f0, focusPlaceId: fid } = stateRef.current;
+      const { facilities: facs, center: c, found: f0, focusPlaceId: fid, starPlaceId: sid } = stateRef.current;
       // 직업 도감에서 넘어왔으면 처음부터 그 장소(⭐)가 보이게 시작한다.
-      const start = fid ? facs.find((f) => f.id === fid) : null;
+      const startId = sid || fid;
+      const start = startId ? facs.find((f) => f.id === startId) : null;
 
       const map = L.map(divRef.current).setView(start ? [start.lat, start.lng] : [c.lat, c.lng], 16);
       mapRef.current = map;
@@ -116,16 +119,16 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       homeRef.current = home;
 
       for (const f of facs) {
-        const isFocus = f.id === fid;
-        const box = isFocus ? 46 : 40;
+        const isStar = f.id === sid;
+        const box = isStar ? 46 : 40;
         const m = L.marker([f.lat, f.lng], {
           icon: L.divIcon({
             className: "",
-            html: markerHtml(f, f0, fid),
+            html: markerHtml(f, f0, sid),
             iconSize: [box, box],
             iconAnchor: [box / 2, box / 2],
           }),
-          zIndexOffset: isFocus ? 500 : 0,
+          zIndexOffset: isStar ? 500 : 0,
         }).addTo(map);
         m.bindPopup(popupFor(f));
         m.on("click", () => stateRef.current.onDiscover(f.id));
@@ -152,16 +155,16 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
       markersRef.current = {};
       for (const f of stateRef.current.facilities) {
         const st = stateRef.current;
-        const isFocus = f.id === st.focusPlaceId;
-        const box = isFocus ? 46 : 40;
+        const isStar = f.id === st.starPlaceId;
+        const box = isStar ? 46 : 40;
         const m = L.marker([f.lat, f.lng], {
           icon: L.divIcon({
             className: "",
-            html: markerHtml(f, st.found, st.focusPlaceId),
+            html: markerHtml(f, st.found, st.starPlaceId),
             iconSize: [box, box],
             iconAnchor: [box / 2, box / 2],
           }),
-          zIndexOffset: isFocus ? 500 : 0,
+          zIndexOffset: isStar ? 500 : 0,
         }).addTo(map);
         m.bindPopup(popupFor(f));
         m.on("click", () => stateRef.current.onDiscover(f.id));
@@ -178,20 +181,21 @@ export default function TownMap({ found, onDiscover, facilities, center, expedit
         const m = markersRef.current[f.id];
         if (!m) continue;
         const st = stateRef.current;
-        const isFocus = f.id === st.focusPlaceId;
-        const box = isFocus ? 46 : 40;
+        const isStar = f.id === st.starPlaceId;
+        const box = isStar ? 46 : 40;
         m.setIcon(
           L.divIcon({
             className: "",
-            html: markerHtml(f, st.found, st.focusPlaceId),
+            html: markerHtml(f, st.found, st.starPlaceId),
             iconSize: [box, box],
             iconAnchor: [box / 2, box / 2],
           })
         );
+        m.setZIndexOffset(isStar ? 500 : 0);
       }
     }
     refresh();
-  }, [found]);
+  }, [found, starPlaceId]);
 
   // 탐험 출발: Lottie 걷기 캐릭터가 🏠에서 핀까지 진짜 길 따라 걸어감
   const expId = expedition?.id ?? null;
