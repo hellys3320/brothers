@@ -1,5 +1,6 @@
 // 보물(아이템) — 동네탐험에서 랜덤으로 발견!
 // 수집함에서 직업 카드의 소켓에 꽂으면 그 카드의 능력치가 강해진다.
+// 같은 보물은 보유한 개수만큼만 꽂을 수 있다.
 import type { JobCard, JobPowers } from "./mock";
 
 export type TreasureRarity = "반짝" | "빛나는" | "전설";
@@ -110,11 +111,30 @@ export function treasureCount(inv: Inventory): number {
   return Object.values(inv).reduce((s, n) => s + n, 0);
 }
 
+/**
+ * 같은 보물을 보유 수량보다 많이 꽂지 못하게 정리한다.
+ * 예전 버그로 한 개를 여러 카드에 꽂아둔 경우에도 첫 카드만 남는다.
+ */
+export function sanitizeSockets(sockets: Sockets, inventory: Inventory): Sockets {
+  const out: Sockets = {};
+  for (const [code, treasureId] of Object.entries(sockets)) {
+    if (typeof treasureId !== "string") continue;
+    if (canSocketTreasure(inventory, out, code, treasureId)) {
+      out[code] = treasureId;
+    }
+  }
+  return out;
+}
+
 export function loadSockets(): Sockets {
   if (typeof window === "undefined") return {};
   try {
     const v = JSON.parse(localStorage.getItem(SOCKET_KEY) ?? "{}") as Sockets;
-    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    const clean = sanitizeSockets(v, loadTreasures());
+    // 예전 중복 소켓은 읽을 때 바로 고쳐서 저장한다.
+    if (Object.keys(clean).length !== Object.keys(v).length) saveSockets(clean);
+    return clean;
   } catch {
     return {};
   }
@@ -128,6 +148,25 @@ export function saveSockets(s: Sockets) {
 
 export function socketFor(sockets: Sockets, code: string): Treasure | null {
   return treasureById(sockets[code]);
+}
+
+/** 이 보물을 지금 몇 장의 카드에 꽂았는지 */
+export function socketedCount(sockets: Sockets, treasureId: string): number {
+  return Object.values(sockets).filter((id) => id === treasureId).length;
+}
+
+/** 이 카드에 이 보물을 꽂을 수 있는지 (보유 수량 - 다른 카드에 꽂힌 수량) */
+export function canSocketTreasure(
+  inventory: Inventory,
+  sockets: Sockets,
+  code: string,
+  treasureId: string
+): boolean {
+  const owned = Math.floor(Number(inventory[treasureId] ?? 0));
+  if (!Number.isFinite(owned) || owned <= 0) return false;
+  // 이미 이 카드에 꽂혀 있으면 그대로 둔다.
+  if (sockets[code] === treasureId) return true;
+  return socketedCount(sockets, treasureId) < owned;
 }
 
 /** 카드에 꽂힌 보물의 강화량 (없으면 0). 배틀에서 서버에 넘길 값. */

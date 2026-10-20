@@ -11,10 +11,12 @@ import JobCardFace from "@/components/JobCardFace";
 import {
   TREASURES,
   TREASURE_STYLE,
+  canSocketTreasure,
   loadTreasures,
   loadSockets,
   saveSockets,
   socketFor,
+  socketedCount,
   treasureCount,
   type Inventory,
   type Sockets,
@@ -60,6 +62,13 @@ function dateStr(t: number): string {
   }
 }
 
+/** 이 보물을 꽂고 있는 다른 카드 이름 */
+function treasureHolders(sockets: Sockets, treasureId: string, exceptCode: string): string[] {
+  return Object.entries(sockets)
+    .filter(([code, id]) => code !== exceptCode && id === treasureId)
+    .map(([code]) => MOCK_JOBS.find((j) => j.code === code)?.name ?? code);
+}
+
 export default function MyBoxClient() {
   const [stamps] = useState<string[]>(readStamps);
   const [myPlaces] = useState(loadMyPlaces);
@@ -74,6 +83,7 @@ export default function MyBoxClient() {
   const [inventory] = useState<Inventory>(loadTreasures);
   const [sockets, setSockets] = useState<Sockets>(loadSockets);
   const [socketTarget, setSocketTarget] = useState<string | null>(null);
+  const [socketError, setSocketError] = useState<string | null>(null);
   const [dream] = useState<Dream | null>(() => {
     try {
       const raw = localStorage.getItem("brothers-dream");
@@ -96,19 +106,34 @@ export default function MyBoxClient() {
   }
 
   function equip(code: string, treasureId: string) {
-    const next: Sockets = { ...sockets, [code]: treasureId };
+    // 다른 탭에서 먼저 꽂았을 수 있으니 저장된 최신 상태로 다시 확인한다.
+    const latestInventory = loadTreasures();
+    const latestSockets = loadSockets();
+    if (!canSocketTreasure(latestInventory, latestSockets, code, treasureId)) {
+      const holders = treasureHolders(latestSockets, treasureId, code);
+      const msg =
+        holders.length > 0
+          ? `${holders.join(", ")}에 꽂혀 있어. 그 카드에서 먼저 빼줘!`
+          : "그 보물을 아직 가지고 있지 않아.";
+      setSocketError(msg);
+      speak(msg);
+      return;
+    }
+    const next: Sockets = { ...latestSockets, [code]: treasureId };
     setSockets(next);
     saveSockets(next);
     setSocketTarget(null);
+    setSocketError(null);
     speak("보물을 꽂아서 카드가 강해졌어!");
   }
 
   function unequip(code: string) {
-    const next: Sockets = { ...sockets };
+    const next: Sockets = loadSockets();
     delete next[code];
     setSockets(next);
     saveSockets(next);
     setSocketTarget(null);
+    setSocketError(null);
     speak("보물을 뺐어!");
   }
 
@@ -176,6 +201,9 @@ export default function MyBoxClient() {
         <p className="font-bold text-stone-500">
           도감 {owned.length}/{TREASURES.length} 종류 · 카드 소켓에 꽂으면 그 능력치가 올라가!
         </p>
+        <p className="mt-1 font-bold text-stone-500">
+          같은 보물은 <b>가진 개수만큼만</b> 꽂을 수 있어. 다른 카드에 꽂힌 보물은 그 카드에서 먼저 빼줘!
+        </p>
         <div className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm font-bold text-stone-700">
           <p className="text-base font-black">💡 보물 힌트</p>
           <p>· 동네탐험 지도에서 <b>새 장소에 도착할 때마다</b> 랜덤으로 나와!</p>
@@ -205,6 +233,7 @@ export default function MyBoxClient() {
                 </li>
               );
             }
+            const used = socketedCount(sockets, t.id);
             return (
               <li key={t.id} className={`rounded-2xl bg-gradient-to-br p-[2px] ${TREASURE_STYLE[t.rarity].frame}`}>
                 <div className={`flex h-full flex-col items-center rounded-[14px] bg-gradient-to-br p-2 text-center ${TREASURE_STYLE[t.rarity].bg}`}>
@@ -216,6 +245,11 @@ export default function MyBoxClient() {
                   <span className={`mt-0.5 rounded-full px-1.5 text-[10px] font-black ${TREASURE_STYLE[t.rarity].badge}`}>
                     {t.rarity} ×{n}
                   </span>
+                  {used > 0 && (
+                    <span className="mt-0.5 text-[10px] font-black text-amber-700">
+                      💠 {used}개 사용 중
+                    </span>
+                  )}
                 </div>
               </li>
             );
@@ -242,31 +276,62 @@ export default function MyBoxClient() {
               <p className="text-lg font-black">
                 💠 {targetJob.name}에 꽂을 보물 고르기
               </p>
-              <button type="button" onClick={() => setSocketTarget(null)} className="rounded-full bg-white px-3 py-1 font-black shadow">
+              <button
+                type="button"
+                onClick={() => {
+                  setSocketTarget(null);
+                  setSocketError(null);
+                }}
+                className="rounded-full bg-white px-3 py-1 font-black shadow"
+              >
                 닫기
               </button>
             </div>
+            <p className="mt-1 text-sm font-bold text-stone-600">
+              보유 수량만큼만 꽂을 수 있어. 다른 카드에 꽂힌 보물은 그 카드에서 먼저 빼줘!
+            </p>
             {owned.length === 0 ? (
               <p className="mt-2 font-bold text-stone-500">꽂을 보물이 없어. 동네탐험에서 보물을 먼저 찾아봐!</p>
             ) : (
               <div className="mt-2 flex flex-wrap gap-2">
                 {owned.map((t) => {
                   const on = sockets[targetJob.code] === t.id;
+                  const used = socketedCount(sockets, t.id);
+                  const have = inventory[t.id] ?? 0;
+                  const holders = treasureHolders(sockets, t.id, targetJob.code);
+                  const blocked = !on && used >= have;
+                  const holderLabel = holders.length > 0 ? holders.join(", ") : "다른 카드";
+                  const status = on
+                    ? "✅ 꽂혀 있음"
+                    : blocked
+                      ? `🔒 ${holderLabel} 카드에 꽂힘`
+                      : used > 0
+                        ? `${have}개 중 ${used}개 사용 중`
+                        : `${have}개 보유`;
                   return (
                     <button
                       key={t.id}
                       type="button"
                       onClick={() => equip(targetJob.code, t.id)}
-                      className={`rounded-2xl px-3 py-2 font-black shadow ${on ? "bg-amber-400" : "bg-white"}`}
+                      disabled={blocked}
+                      title={blocked ? `${holderLabel}에 꽂혀 있어요. 먼저 빼주세요.` : undefined}
+                      className={`rounded-2xl px-3 py-2 text-left font-black shadow ${
+                        on ? "bg-amber-400" : blocked ? "cursor-not-allowed bg-stone-100 text-stone-400 shadow-none" : "bg-white"
+                      }`}
                     >
-                      {t.emoji} {t.name}
-                      <span className="ml-1 text-sm text-stone-600">
-                        {t.stat}+{t.bonus}
+                      <span className="block">
+                        {t.emoji} {t.name}
+                      </span>
+                      <span className={`block text-xs ${blocked ? "text-stone-400" : "text-stone-600"}`}>
+                        {t.stat}+{t.bonus} · {status}
                       </span>
                     </button>
                   );
                 })}
               </div>
+            )}
+            {socketError && (
+              <p className="mt-2 rounded-xl bg-rose-100 px-3 py-2 font-black text-rose-700">⚠️ {socketError}</p>
             )}
             {socketFor(sockets, targetJob.code) && (
               <button type="button" onClick={() => unequip(targetJob.code)} className="mt-3 rounded-2xl bg-stone-200 px-4 py-2 font-black">
@@ -291,7 +356,15 @@ export default function MyBoxClient() {
               const no = String(MOCK_JOBS.findIndex((x) => x.code === j.code) + 1).padStart(3, "0");
               return (
                 <li key={j.code} className="flex flex-col gap-1">
-                  <JobCardFace job={j} no={no} socket={socketFor(sockets, j.code)} onSocketClick={() => setSocketTarget(j.code)} />
+                  <JobCardFace
+                    job={j}
+                    no={no}
+                    socket={socketFor(sockets, j.code)}
+                    onSocketClick={() => {
+                      setSocketTarget(j.code);
+                      setSocketError(null);
+                    }}
+                  />
                   <Link href={`/jobs/${j.code}`} className="rounded-xl bg-stone-100 py-1 text-center text-xs font-black text-stone-600">
                     📖 {j.name} 도감 보기
                   </Link>
