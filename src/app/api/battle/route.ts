@@ -1,18 +1,28 @@
 // 카드배틀 방 (3판 선공개 vs 순차 공개, 서버에서 판정)
 import { store, TTL_7D, roomCode } from "@/lib/store";
 import { MOCK_JOBS } from "@/lib/mock";
+import { battleBonus, clampLevel } from "@/lib/battleLevel";
 
 export interface BattleRound {
   card: string;
   stat: string;
   /** 카드 소켓(보물) 강화 수치 */
   bonus?: number;
+  /** 이 판에 레벨 기세를 사용했는지 (3판 중 1판만) */
+  momentum?: boolean;
+}
+
+export interface BattlePlayer {
+  code: string;
+  name: string;
+  /** 배틀 당시 레벨 (표시 + 기세 계산용) */
+  level?: number;
 }
 
 export interface Battle {
   id: string;
-  a: { code: string; name: string };
-  b: { code: string; name: string } | null;
+  a: BattlePlayer;
+  b: BattlePlayer | null;
   aRounds: BattleRound[];
   bRounds: BattleRound[] | null;
   status: "wait" | "done";
@@ -21,11 +31,26 @@ export interface Battle {
   createdAt: number;
 }
 
-function valOf(code: string, stat: string, bonus = 0): number {
+function valOf(
+  code: string,
+  stat: string,
+  bonus = 0,
+  level = 1,
+  momentum = false
+): number {
   const j = MOCK_JOBS.find((x) => x.code === code);
   const v = (j?.powers as Record<string, number> | undefined)?.[stat];
-  const safe = Number.isFinite(bonus) ? Math.max(0, Math.min(5, Math.floor(bonus))) : 0;
-  return (typeof v === "number" ? v : 0) + safe;
+  return (typeof v === "number" ? v : 0) + battleBonus(bonus, level, momentum);
+}
+
+/** 3판 중 딱 1판만 기세를 인정한다 (클라이언트가 여러 판에 켜도 서버에서 차단) */
+function oneMomentum(rounds: BattleRound[]): BattleRound[] {
+  let used = false;
+  return rounds.map((r) => {
+    const momentum = r.momentum === true && !used;
+    if (momentum) used = true;
+    return { ...r, momentum };
+  });
 }
 
 export async function POST(req: Request) {
@@ -41,6 +66,7 @@ export async function POST(req: Request) {
       rounds?: BattleRound[];
       code?: string;
       name?: string;
+      level?: number;
     };
     if (body.op === "create") {
       if (!body.aCode || !body.aName || !Array.isArray(body.rounds) || body.rounds.length !== 3) {
@@ -49,9 +75,13 @@ export async function POST(req: Request) {
       const id = roomCode();
       const b: Battle = {
         id,
-        a: { code: body.aCode.toUpperCase(), name: body.aName.slice(0, 10) },
+        a: {
+          code: body.aCode.toUpperCase(),
+          name: body.aName.slice(0, 10),
+          level: clampLevel(body.level),
+        },
         b: null,
-        aRounds: body.rounds,
+        aRounds: oneMomentum(body.rounds),
         bRounds: null,
         status: "wait",
         createdAt: Date.now(),
@@ -74,10 +104,13 @@ export async function POST(req: Request) {
       const b = await r.get<Battle>(key);
       if (!b || b.status !== "wait") return Response.json({ ok: false, reason: "closed" });
       if (b.a.code === body.code.toUpperCase()) return Response.json({ ok: false, reason: "self" });
+      const aLevel = clampLevel(b.a.level);
+      const bLevel = clampLevel(body.level);
+      const bRounds = oneMomentum(body.rounds);
       const result = b.aRounds.map((ar, i) => {
-        const br = body.rounds![i];
-        const aVal = valOf(ar.card, ar.stat, ar.bonus);
-        const bVal = valOf(br.card, br.stat, br.bonus);
+        const br = bRounds[i];
+        const aVal = valOf(ar.card, ar.stat, ar.bonus, aLevel, ar.momentum === true);
+        const bVal = valOf(br.card, br.stat, br.bonus, bLevel, br.momentum === true);
         return { aVal, bVal, win: (aVal === bVal ? "draw" : aVal > bVal ? "a" : "b") as "a" | "b" | "draw" };
       });
       const aWins = result.filter((x) => x.win === "a").length;
@@ -92,8 +125,12 @@ export async function POST(req: Request) {
       }
       const done: Battle = {
         ...b,
-        b: { code: body.code.toUpperCase(), name: body.name.slice(0, 10) },
-        bRounds: body.rounds,
+        b: {
+          code: body.code.toUpperCase(),
+          name: body.name.slice(0, 10),
+          level: bLevel,
+        },
+        bRounds,
         status: "done",
         result,
         winnerCode,

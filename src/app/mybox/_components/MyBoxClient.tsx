@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { loadMyPlaces } from "@/lib/realTown";
 import { getXP, getXPLog, levelFor } from "@/lib/xp";
+import { battleLevelBenefit } from "@/lib/battleLevel";
 import { loadStampLog } from "@/lib/stamps";
 import { MOCK_JOBS } from "@/lib/mock";
 import JobCardFace from "@/components/JobCardFace";
@@ -148,6 +149,7 @@ export default function MyBoxClient() {
   const owned = TREASURES.filter((t) => (inventory[t.id] ?? 0) > 0);
   const strengthened = jobCards.filter((j) => sockets[j.code]).length;
   const targetJob = socketTarget ? MOCK_JOBS.find((j) => j.code === socketTarget) : null;
+  const battleBenefit = battleLevelBenefit(levelFor(xp).lv);
 
   return (
     <div className="flex flex-col gap-5">
@@ -160,6 +162,13 @@ export default function MyBoxClient() {
           퀴즈 최고 기록: {best}개 · 스탬프 {stamps.length}개 · 카드 {jobCards.length}장 · 보물 {treasureCount(inventory)}개
         </p>
         <p className="font-black text-violet-700">🎖️ Lv.{levelFor(xp).lv} {levelFor(xp).name} ({xp} XP)</p>
+        <p className="mt-1 font-bold text-stone-600">
+          ⚔️ 배틀 혜택:{" "}
+          {battleBenefit.momentum > 0
+            ? `3판 중 1판 기세 +${battleBenefit.momentum}`
+            : "Lv.3부터 기세 사용"}{" "}
+          · 승리 +{battleBenefit.winXP} XP
+        </p>
       </div>
 
       <div className="rounded-3xl bg-white p-5 shadow">

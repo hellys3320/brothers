@@ -6,7 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { MOCK_JOBS } from "@/lib/mock";
 import { myCode } from "@/lib/friends";
 import { loadMe } from "@/lib/me";
-import { addXP } from "@/lib/xp";
+import { addXP, getXP, levelFor } from "@/lib/xp";
+import { battleLevelBenefit, battleXPFor, clampLevel, momentumBonusFor } from "@/lib/battleLevel";
 import { speak } from "@/lib/speak";
 import JobCardFace from "@/components/JobCardFace";
 import { loadSockets, socketBonusOf, socketFor } from "@/lib/treasures";
@@ -37,13 +38,13 @@ function ownedCodes(): string[] {
   }
 }
 
-function claimBattleXP(id: string, won: boolean) {
+function claimBattleXP(id: string, won: boolean, level: number) {
   try {
     const raw = JSON.parse(localStorage.getItem("brothers-battle-xp") ?? "[]") as string[];
     const v = Array.isArray(raw) ? raw : [];
     if (v.includes(id)) return;
     localStorage.setItem("brothers-battle-xp", JSON.stringify([...v, id]));
-    addXP(won ? 10 : 3, won ? "카드배틀 승리!" : "카드배틀 참가!");
+    addXP(battleXPFor(level, won), won ? "카드배틀 승리!" : "카드배틀 참가!");
   } catch {}
 }
 
@@ -58,8 +59,18 @@ function pval(code: string, stat: string): number {
   return typeof p[stat] === "number" ? p[stat] : 0;
 }
 
-// 3판 덱 짜기 (남은 카드 + 스탯 고르기)
-function DeckBuilder({ title, onDone }: { title: string; onDone: (rounds: BattleRound[]) => void }) {
+// 3판 덱 짜기 (남은 카드 + 스탯 고르기 + 레벨 기세 한 판)
+function DeckBuilder({
+  title,
+  onDone,
+  allowMomentum = true,
+  level,
+}: {
+  title: string;
+  onDone: (rounds: BattleRound[]) => void;
+  allowMomentum?: boolean;
+  level: number;
+}) {
   const [pool] = useState(() => {
     const owned = ownedCodes();
     return owned.length >= 3 ? MOCK_JOBS.filter((j) => owned.includes(j.code)) : MOCK_JOBS;
@@ -70,6 +81,9 @@ function DeckBuilder({ title, onDone }: { title: string; onDone: (rounds: Battle
     { card: "", stat: "힘" },
     { card: "", stat: "힘" },
   ]);
+  const [momentumRound, setMomentumRound] = useState<number | null>(null);
+  const benefit = battleLevelBenefit(level);
+  const momentum = allowMomentum ? benefit.momentum : 0;
   const used = picks.map((p) => p.card).filter(Boolean);
 
   function setPick(i: number, card: string) {
@@ -81,10 +95,27 @@ function DeckBuilder({ title, onDone }: { title: string; onDone: (rounds: Battle
 
   const ready = picks.every((p) => p.card);
 
+  function finish() {
+    onDone(picks.map((p, i) => ({ ...p, momentum: i === momentumRound && momentum > 0 })));
+  }
+
   return (
     <div className="rounded-3xl bg-white p-5 shadow">
       <h2 className="text-2xl font-black">{title}</h2>
       <p className="font-bold text-stone-500">3판에 낼 카드 1장씩 + 겨룰 힘 1개씩!</p>
+      <div className="mt-2 rounded-2xl bg-amber-50 p-3 text-center">
+        {allowMomentum ? (
+          momentum > 0 ? (
+            <p className="font-black text-amber-800">
+              ⭐ Lv.{benefit.level} 기세: 3판 중 1판에 +{momentum}! 아래에서 쓸 판을 골라.
+            </p>
+          ) : (
+            <p className="font-black text-stone-500">🔒 레벨 기세는 Lv.3부터! 지금은 Lv.{benefit.level}.</p>
+          )
+        ) : (
+          <p className="font-black text-stone-500">👫 둘이서 모드는 레벨 기세 없이 공정하게!</p>
+        )}
+      </div>
       {[0, 1, 2].map((r) => (
         <div key={r} className="mt-3 rounded-2xl bg-stone-50 p-3">
           <p className="font-black">{r + 1}판</p>
@@ -116,6 +147,22 @@ function DeckBuilder({ title, onDone }: { title: string; onDone: (rounds: Battle
               </button>
             ))}
           </div>
+          {allowMomentum && (
+            <button
+              type="button"
+              disabled={momentum === 0}
+              onClick={() => setMomentumRound((cur) => (cur === r ? null : r))}
+              className={`mt-2 rounded-full px-3 py-1 font-black shadow disabled:opacity-40 ${
+                momentumRound === r ? "bg-amber-400" : "bg-white"
+              }`}
+            >
+              {momentum === 0
+                ? "🔒 기세 Lv.3"
+                : momentumRound === r
+                  ? `⭐ 기세 +${momentum} 사용!`
+                  : `⭐ 이 판에 기세 +${momentum}`}
+            </button>
+          )}
           {picks[r].card ? (
             <div className="mt-2 flex items-center gap-3">
               <div className="w-20 shrink-0">
@@ -133,7 +180,7 @@ function DeckBuilder({ title, onDone }: { title: string; onDone: (rounds: Battle
       <button
         type="button"
         disabled={!ready}
-        onClick={() => onDone(picks)}
+        onClick={finish}
         className="mt-3 w-full rounded-2xl bg-red-400 px-4 py-3 text-xl font-black disabled:opacity-40"
       >
         확정!
@@ -142,11 +189,17 @@ function DeckBuilder({ title, onDone }: { title: string; onDone: (rounds: Battle
   );
 }
 
-function ResultView({ battle, myCode: me }: { battle: Battle; myCode: string }) {
+function ResultView({ battle, myCode: me, myLevel }: { battle: Battle; myCode: string; myLevel: number }) {
   const iAmA = battle.a.code === me;
   const myWins = battle.result?.filter((r) => (iAmA ? r.win === "a" : r.win === "b")).length ?? 0;
   const won = battle.winnerCode === me;
   const draw = !battle.winnerCode;
+  const rewardLevel = iAmA ? clampLevel(battle.a.level ?? myLevel) : clampLevel(battle.b?.level ?? myLevel);
+  const xp = battleXPFor(rewardLevel, won);
+  const aLv = clampLevel(battle.a.level);
+  const bLv = clampLevel(battle.b?.level);
+  const aBenefit = battleLevelBenefit(aLv);
+  const bBenefit = battleLevelBenefit(bLv);
 
   return (
     <div className="flex flex-col gap-4">
@@ -155,7 +208,15 @@ function ResultView({ battle, myCode: me }: { battle: Battle; myCode: string }) 
         <h2 className="text-3xl font-black">
           {draw ? "무승부!" : won ? "승리!" : `${battle.a.code === me ? battle.b?.name : battle.a.name} 승리!`}
         </h2>
-        <p className="text-xl font-black text-violet-700">{draw ? "+3 XP!" : won ? "+10 XP!" : "+3 XP!"}</p>
+        <p className="mt-1 font-black text-stone-600">
+          🎖️ Lv.{aLv} {aBenefit.badge} {battle.a.name}
+          {battle.b && (
+            <>
+              {" "}vs Lv.{bLv} {bBenefit.badge} {battle.b.name}
+            </>
+          )}
+        </p>
+        <p className="text-xl font-black text-violet-700">+{xp} XP!</p>
       </div>
       <div className="rounded-3xl bg-white p-5 shadow">
         <h3 className="text-2xl font-black">⚔️ 판 결과 ({myWins}승!)</h3>
@@ -178,6 +239,14 @@ function ResultView({ battle, myCode: me }: { battle: Battle; myCode: string }) 
                   <p className="text-xl">{r.bVal}</p>
                   <div className="w-14 shrink-0">{b && bj && <JobCardFace job={bj} no={noOf(b.card)} />}</div>
                 </div>
+                {(a.momentum || b?.momentum || a.bonus || b?.bonus) && (
+                  <p className="mt-1 text-sm font-bold text-stone-500">
+                    {a.momentum ? "⭐ A 기세 " : ""}
+                    {a.bonus ? `💠 A보물+${a.bonus} ` : ""}
+                    {b?.momentum ? "⭐ B 기세 " : ""}
+                    {b?.bonus ? `💠 B보물+${b.bonus}` : ""}
+                  </p>
+                )}
               </li>
             );
           })}
@@ -195,19 +264,54 @@ function ResultView({ battle, myCode: me }: { battle: Battle; myCode: string }) 
   );
 }
 
+function BattleLevelCard({ level }: { level: number }) {
+  const b = battleLevelBenefit(level);
+  const nextB = b.next ? battleLevelBenefit(b.next.level) : null;
+  return (
+    <div className="rounded-3xl bg-gradient-to-br from-amber-100 to-pink-100 p-5 shadow">
+      <p className="text-xl font-black">
+        🎖️ Lv.{b.level} {b.badge} {b.name}
+      </p>
+      <ul className="mt-2 flex flex-col gap-1 font-bold text-stone-700">
+        <li>
+          {b.momentum > 0
+            ? `⭐ 기세: 3판 중 1판에 +${b.momentum} (보물과 합쳐 최대 +5)`
+            : "🔒 기세: Lv.3부터 사용 가능"}
+        </li>
+        <li>🏆 승리 +{b.winXP} XP · 참가 +{b.loseXP} XP</li>
+        {b.next && (
+          <li className="text-violet-700">
+            다음 Lv.{b.next.level} {b.next.name}
+            {nextB && nextB.momentum > b.momentum ? ` · 기세 +${nextB.momentum}` : ""}
+            {nextB && nextB.winXP > b.winXP ? ` · 승리 XP +${nextB.winXP}` : ""}
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
 export default function BattleClient() {
   const searchParams = useSearchParams();
   const to = searchParams.get("to");
   const [tab, setTab] = useState<"online" | "local">("online");
   const [me] = useState(() => myCode());
   const [myName] = useState(() => loadMe()?.nickname ?? "탐험대원");
+  const [myLevel, setMyLevel] = useState(() => clampLevel(levelFor(getXP()).lv));
+
+  // 배틀 보상으로 레벨이 오르면 배틀 화면의 혜택도 바로 갱신
+  useEffect(() => {
+    const sync = () => setMyLevel(clampLevel(levelFor(getXP()).lv));
+    window.addEventListener("brothers-xp", sync);
+    return () => window.removeEventListener("brothers-xp", sync);
+  }, []);
   const [view, setView] = useState<
     | { k: "menu" }
     | { k: "create"; toCode: string }
     | { k: "wait"; id: string; toCode?: string }
     | { k: "play"; battle: Battle }
     | { k: "result"; battle: Battle }
-    | { k: "local-p1" } | { k: "local-p2"; p1: { name: string; rounds: BattleRound[] } } | { k: "local-result"; p1name: string; p2name: string; results: Array<{ aVal: number; bVal: number; win: string }> ; aRounds: BattleRound[]; bRounds: BattleRound[] }
+    | { k: "local-p1" } | { k: "local-p2"; p1: { name: string; rounds: BattleRound[] } } | { k: "local-result"; p1name: string; p2name: string; results: Array<{ aVal: number; bVal: number; win: string }> ; aRounds: BattleRound[]; bRounds: BattleRound[]; level: number }
   >(() => (to ? { k: "create", toCode: to.toUpperCase() } : { k: "menu" }));
   const [joinCode, setJoinCode] = useState("");
   const [incoming, setIncoming] = useState<Array<{ id: string; from: string; at: number; status: string }>>([]);
@@ -243,7 +347,7 @@ export default function BattleClient() {
         const res = await fetch(`/api/battle?id=${view.id}`);
         const j = (await res.json()) as { ok: boolean; battle?: Battle };
         if (live && j.ok && j.battle && j.battle.status === "done") {
-          claimBattleXP(j.battle.id, j.battle.winnerCode === me);
+          claimBattleXP(j.battle.id, j.battle.winnerCode === me, myLevel);
           setView({ k: "result", battle: j.battle });
         }
       } catch {}
@@ -253,14 +357,14 @@ export default function BattleClient() {
       live = false;
       clearInterval(iv);
     };
-  }, [view, me]);
+  }, [view, me, myLevel]);
 
   async function createBattle(rounds: BattleRound[], toCode: string) {
     try {
       const res = await fetch("/api/battle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ op: "create", aCode: me, aName: myName, toCode: toCode || undefined, rounds: withSockets(rounds) }),
+        body: JSON.stringify({ op: "create", aCode: me, aName: myName, toCode: toCode || undefined, level: myLevel, rounds: withSockets(rounds) }),
       });
       const j = (await res.json()) as { ok: boolean; id?: string; reason?: string };
       if (j.ok && j.id) {
@@ -310,11 +414,11 @@ export default function BattleClient() {
       const res = await fetch("/api/battle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ op: "answer", id: view.battle.id, code: me, name: myName, rounds: withSockets(finalPicks) }),
+        body: JSON.stringify({ op: "answer", id: view.battle.id, code: me, name: myName, level: myLevel, rounds: withSockets(finalPicks) }),
       });
       const j = (await res.json()) as { ok: boolean; battle?: Battle; reason?: string };
       if (j.ok && j.battle) {
-        claimBattleXP(j.battle.id, j.battle.winnerCode === me);
+        claimBattleXP(j.battle.id, j.battle.winnerCode === me, myLevel);
         setBPicks([]);
         setBRound(0);
         setView({ k: "result", battle: j.battle });
@@ -340,9 +444,8 @@ export default function BattleClient() {
     const bW = results.filter((r) => r.win === "b").length;
     const winner = aW === bW ? "무승부!" : aW > bW ? p1.name : p2.name;
     const id = `local-${Date.now()}`;
-    claimBattleXP(id, true);
-    addXP(3, "둘이서 대결!");
-    setView({ k: "local-result", p1name: p1.name, p2name: p2.name, results, aRounds: p1.rounds, bRounds: p2.rounds });
+    claimBattleXP(id, aW !== bW, myLevel);
+    setView({ k: "local-result", p1name: p1.name, p2name: p2.name, results, aRounds: p1.rounds, bRounds: p2.rounds, level: myLevel });
     setLocalWinner(winner);
     speak(`${winner}!`);
   }
@@ -366,6 +469,7 @@ export default function BattleClient() {
 
       {tab === "online" && view.k === "menu" && (
         <div className="flex flex-col gap-4">
+          <BattleLevelCard level={myLevel} />
           <div className="rounded-3xl bg-white p-5 shadow">
             <h2 className="text-2xl font-black">⚔️ 대결 신청하기</h2>
             <Link href="/friends" className="mt-2 block rounded-2xl bg-sky-200 px-4 py-3 text-center text-xl font-black">
@@ -411,7 +515,7 @@ export default function BattleClient() {
       )}
 
       {tab === "online" && view.k === "create" && (
-        <DeckBuilder title="내 덱 3장 정하기!" onDone={(rounds) => createBattle(rounds, view.toCode)} />
+        <DeckBuilder title="내 덱 3장 정하기!" level={myLevel} onDone={(rounds) => createBattle(rounds, view.toCode)} />
       )}
 
       {tab === "online" && view.k === "wait" && (
@@ -437,11 +541,12 @@ export default function BattleClient() {
           setPicks={setBPicks}
           round={bRound}
           setRound={setBRound}
+          level={myLevel}
           onDone={submitAnswer}
         />
       )}
 
-      {tab === "online" && view.k === "result" && <ResultView battle={view.battle} myCode={me} />}
+      {tab === "online" && view.k === "result" && <ResultView battle={view.battle} myCode={me} myLevel={myLevel} />}
 
       {tab === "local" && view.k === "menu" && (
         <div className="rounded-3xl bg-white p-5 shadow">
@@ -467,6 +572,8 @@ export default function BattleClient() {
           <p className="mb-2 text-center text-xl font-black">📱 {p1name || "1P"}만 봐! ({p2name || "2P"}는 눈 가려!)</p>
           <DeckBuilder
             title={`${p1name || "1P"} 덱 짜기!`}
+            level={myLevel}
+            allowMomentum={false}
             onDone={(rounds) => {
               setView({ k: "local-p2", p1: { name: p1name || "1P", rounds } });
             }}
@@ -479,6 +586,8 @@ export default function BattleClient() {
           <p className="mb-2 text-center text-xl font-black">📱 이제 {p2name || "2P"}만 봐!</p>
           <DeckBuilder
             title={`${p2name || "2P"} 덱 짜기!`}
+            level={myLevel}
+            allowMomentum={false}
             onDone={(rounds) => resolveLocal(view.p1, { name: p2name || "2P", rounds })}
           />
         </div>
@@ -489,7 +598,8 @@ export default function BattleClient() {
           <div className="animate-pop rounded-3xl bg-gradient-to-b from-amber-200 to-pink-200 p-6 text-center shadow">
             <p className="text-5xl">🏆</p>
             <h2 className="text-3xl font-black">{localWinner}!</h2>
-            <p className="text-xl font-black text-violet-700">+10 XP!</p>
+            <p className="mt-1 font-bold text-stone-600">👫 둘이서 모드는 레벨 기세 없이 순수 카드 대결!</p>
+            <p className="text-xl font-black text-violet-700">+{battleXPFor(view.level, localWinner !== "무승부!")} XP!</p>
           </div>
           <div className="rounded-3xl bg-white p-5 shadow">
             {view.results.map((r, i) => {
@@ -522,6 +632,7 @@ function PlayView({
   setPicks,
   round,
   setRound,
+  level,
   onDone,
 }: {
   battle: Battle;
@@ -529,12 +640,16 @@ function PlayView({
   setPicks: (p: BattleRound[]) => void;
   round: number;
   setRound: (n: number) => void;
+  level: number;
   onDone: (finalPicks: BattleRound[]) => void;
 }) {
   const foe = battle.aRounds[round];
   const foeJob = jobOf(foe.card);
   const [code, setCode] = useState("");
   const [stat, setStat] = useState(STATS[0]);
+  const [momentumUsed, setMomentumUsed] = useState(false);
+  const [useMomentum, setUseMomentum] = useState(false);
+  const myMomentum = battleLevelBenefit(level).momentum;
   const [pool] = useState(() => {
     const owned = ownedCodes();
     return owned.length >= 3 ? MOCK_JOBS.filter((j) => owned.includes(j.code)) : MOCK_JOBS;
@@ -543,7 +658,10 @@ function PlayView({
 
   function confirm() {
     if (!code) return;
-    const next = [...picks, { card: code, stat }];
+    const useNow = useMomentum && !momentumUsed && myMomentum > 0;
+    const next = [...picks, { card: code, stat, momentum: useNow }];
+    if (useNow) setMomentumUsed(true);
+    setUseMomentum(false);
     setPicks(next);
     setCode("");
     if (round + 1 >= 3) {
@@ -557,7 +675,9 @@ function PlayView({
     <div className="rounded-3xl bg-white p-5 shadow">
       <p className="font-black text-stone-500">{round + 1}판 / 3판</p>
       <div className="mt-2 flex flex-col items-center rounded-2xl bg-red-100 p-4 text-center">
-        <p className="font-black text-stone-500">{battle.a.name}가 낸 카드!</p>
+        <p className="font-black text-stone-500">
+          {battle.a.name} · Lv.{clampLevel(battle.a.level)} {battleLevelBenefit(battle.a.level).badge}가 낸 카드!
+        </p>
         {foeJob && (
           <div className="mt-2 w-28">
             <JobCardFace job={foeJob} no={noOf(foe.card)} />
@@ -565,7 +685,8 @@ function PlayView({
         )}
         <p className="mt-1 text-lg font-black">
           겨루는 힘: {foe.stat}
-          {foe.bonus ? ` (보물 강화 +${foe.bonus})` : ""}
+          {foe.bonus ? ` · 💠 보물 +${foe.bonus}` : ""}
+          {foe.momentum ? ` · ⭐ 기세 +${momentumBonusFor(battle.a.level ?? 1)}` : ""}
         </p>
       </div>
       <p className="mt-3 text-xl font-black">내 카드 내기!</p>
@@ -597,6 +718,26 @@ function PlayView({
           </button>
         ))}
       </div>
+      {myMomentum > 0 ? (
+        <button
+          type="button"
+          disabled={momentumUsed}
+          onClick={() => setUseMomentum((v) => !v)}
+          className={`mt-2 w-full rounded-2xl px-4 py-2 font-black shadow disabled:opacity-50 ${
+            useMomentum ? "bg-amber-400" : "bg-amber-100"
+          }`}
+        >
+          {momentumUsed
+            ? "⭐ 이번 대결 기세 사용 완료!"
+            : useMomentum
+              ? `⭐ 이 판에 기세 +${myMomentum} 사용!`
+              : `⭐ 이 판에 기세 +${myMomentum} 쓰기 (한 번만)`}
+        </button>
+      ) : (
+        <p className="mt-2 rounded-2xl bg-stone-100 p-2 text-center font-bold text-stone-500">
+          🔒 레벨 기세는 Lv.3부터!
+        </p>
+      )}
       <button
         type="button"
         disabled={!code}
