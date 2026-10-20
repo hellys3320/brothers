@@ -83,7 +83,7 @@ export default function JobRealPlaces({ jobCode, jobName }: { jobCode: string; j
           동네 탐험하기
         </Link>
         <Link href="/games?tab=quiz" className="flex-1 rounded-2xl bg-yellow-200 px-4 py-3 text-center text-lg font-black">
-          퀴즈 풀기
+          오늘의 퀴즈
         </Link>
       </div>
     </div>

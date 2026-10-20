@@ -110,7 +110,7 @@ export default function HomeClient() {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Link href="/games" className="rounded-3xl bg-violet-300 p-6 text-center text-xl font-black shadow">
-          🎮 직업 놀이터
+          🎮 게임 놀이터
         </Link>
         <Link href="/games?tab=quiz" className="rounded-3xl bg-yellow-300 p-6 text-center text-xl font-black shadow">
           🎯 오늘의 퀴즈

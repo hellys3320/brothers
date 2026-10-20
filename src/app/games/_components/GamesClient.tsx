@@ -399,7 +399,7 @@ const TABS: Array<{ k: Tab; label: string }> = [
   { k: "who", label: "🕵️ 누구일까?" },
   { k: "sos", label: "🚨 위급상황!" },
   { k: "vs", label: "⚖️ 밸런스" },
-  { k: "quiz", label: "🎯 비밀퀴즈" },
+  { k: "quiz", label: "🎯 오늘의 퀴즈" },
 ];
 
 export default function GamesClient() {

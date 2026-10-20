@@ -13,7 +13,7 @@ export default function JobsPage() {
       <HyungnimTalk text="직업 100개! 카드를 모아봐. 체험하고 놀면 XP가 쌓여!" />
       <div className="grid grid-cols-2 gap-4">
         <Link href="/games" className="rounded-3xl bg-violet-300 p-5 text-center text-xl font-black shadow">
-          🎮 직업 놀이터
+          🎮 게임 놀이터
         </Link>
         <Link href="/jobs/dream" className="rounded-3xl bg-rose-200 p-5 text-center text-xl font-black shadow">
           🌟 꿈 발표장

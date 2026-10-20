@@ -267,7 +267,7 @@ export default function MyBoxClient() {
       <div className="rounded-3xl bg-white p-5 shadow">
         <h2 className="text-2xl font-black">⚡ XP 히스토리</h2>
         {xpLog.length === 0 ? (
-          <p className="mt-2 font-bold text-stone-500">아직 XP가 없어. 탐험·퀴즈·게임을 해봐!</p>
+          <p className="mt-2 font-bold text-stone-500">아직 XP가 없어. 탐험·게임(퀴즈)을 해봐!</p>
         ) : (
           <ul className="mt-2 flex max-h-56 flex-col gap-1 overflow-y-auto">
             {xpLog.slice(0, 15).map((e, i) => (
