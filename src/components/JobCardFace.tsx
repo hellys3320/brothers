@@ -105,7 +105,9 @@ export default function JobCardFace({
             type="button"
             onClick={onSocketClick}
             className={`mt-1 w-full rounded-lg px-1 py-1 text-[10px] font-black ${
-              socket ? `bg-gradient-to-r ${TREASURE_STYLE[socket.rarity].bg} text-amber-900` : "border-2 border-dashed border-stone-300 text-stone-500 hover:bg-stone-50"
+              socket
+                ? `bg-gradient-to-r ${TREASURE_STYLE[socket.rarity].bg} ${TREASURE_STYLE[socket.rarity].text}`
+                : "border-2 border-dashed border-stone-300 text-stone-500 hover:bg-stone-50"
             }`}
           >
             {socket ? `${socket.emoji} ${socket.name} · ${socket.stat}+${socket.bonus}` : "＋ 보물 꽂기"}
@@ -113,7 +115,9 @@ export default function JobCardFace({
         ) : (
           <div
             className={`mt-1 w-full truncate rounded-lg px-1 py-1 text-center text-[10px] font-black ${
-              socket ? `bg-gradient-to-r ${TREASURE_STYLE[socket.rarity].bg} text-amber-900` : "border-2 border-dashed border-stone-200 text-stone-400"
+              socket
+                ? `bg-gradient-to-r ${TREASURE_STYLE[socket.rarity].bg} ${TREASURE_STYLE[socket.rarity].text}`
+                : "border-2 border-dashed border-stone-200 text-stone-400"
             }`}
           >
             {socket ? `${socket.emoji} ${socket.name} · ${socket.stat}+${socket.bonus}` : "빈 소켓"}

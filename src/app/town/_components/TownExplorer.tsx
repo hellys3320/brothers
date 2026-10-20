@@ -12,7 +12,7 @@ import { logStamp } from "@/lib/stamps";
 import { todayQuest, saveQuest, type TownQuest } from "@/lib/quest";
 import { loadMe, type MeProfile } from "@/lib/me";
 import { speak } from "@/lib/speak";
-import { addTreasure, loadTreasures, saveTreasures, tryFindTreasure, type Treasure } from "@/lib/treasures";
+import { addTreasure, loadTreasures, saveTreasures, tryFindTreasure, TREASURE_STYLE, type Treasure } from "@/lib/treasures";
 import { addJobVisit, awardJobCard, jobMissionReady } from "@/lib/jobMission";
 
 const KIND_COLOR: Record<FacilityKind, string> = {
@@ -284,9 +284,9 @@ export default function TownExplorer() {
       if (t) {
         saveTreasures(addTreasure(inv, t.id));
         setTreasureFind(t);
-        addXP(3, `보물 '${t.name}' 발견!`);
+        addXP(3, `${t.rarity === "신화" ? "신화 보물" : "보물"} '${t.name}' 발견!`);
         setTimeout(() => setTreasureFind(null), 3000);
-        setTimeout(() => speak(`보물 발견! ${t.name}! 수집함에서 카드에 꽂아봐!`), 3200);
+        setTimeout(() => speak(`${t.rarity === "신화" ? "신화 보물" : "보물"} 발견! ${t.name}! 수집함에서 카드에 꽂아봐!`), 3200);
       }
     } catch {}
     const gotNow = next.filter((n) => places.some((p) => p.id === n)).length;
@@ -316,12 +316,25 @@ export default function TownExplorer() {
         </div>
       )}
       {treasureFind && (
-        <div className="animate-pop pointer-events-none fixed inset-x-0 top-40 z-40 mx-auto w-fit rounded-3xl bg-gradient-to-r from-amber-300 to-yellow-400 px-6 py-4 text-center shadow-xl">
-          <p className="text-xl font-black">✨ 보물 발견! ✨</p>
+        <div
+          className={`animate-pop pointer-events-none fixed inset-x-0 top-40 z-40 mx-auto w-fit rounded-3xl bg-gradient-to-r px-6 py-4 text-center shadow-xl ${
+            TREASURE_STYLE[treasureFind.rarity].bg
+          } ${TREASURE_STYLE[treasureFind.rarity].text}`}
+        >
+          <p className="text-xl font-black">
+            {treasureFind.rarity === "신화" ? "🌟 신화 보물 발견! 🌟" : "✨ 보물 발견! ✨"}
+          </p>
           <p className="text-2xl font-black">
             {treasureFind.emoji} {treasureFind.name}
           </p>
-          <p className="text-sm font-black text-stone-700">
+          <span
+            className={`mt-1 inline-block rounded-full px-3 py-0.5 text-sm font-black ${
+              TREASURE_STYLE[treasureFind.rarity].badge
+            }`}
+          >
+            {treasureFind.rarity}
+          </span>
+          <p className="mt-1 text-sm font-black text-stone-700">
             {treasureFind.stat} +{treasureFind.bonus} 강화! 수집함에서 카드에 꽂아봐!
           </p>
         </div>
@@ -345,7 +358,7 @@ export default function TownExplorer() {
         </div>
         <p className="mt-1 text-sm font-bold text-stone-500">핀을 누르면 스탬프가 수집함에 저장돼!</p>
         <p className="mt-1 text-sm font-bold text-amber-700">
-          💎 보물 힌트: 새 장소에 도착하면 55% 확률! 처음엔 꼭 1개, 전설은 10%!
+          💎 보물 힌트: 새 장소에 도착하면 55% 확률! 처음엔 꼭 1개, 전설 10%·신화 5%!
         </p>
       </div>
       {questView && (

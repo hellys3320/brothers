@@ -3,7 +3,7 @@
 // 같은 보물은 보유한 개수만큼만 꽂을 수 있다.
 import type { JobCard, JobPowers } from "./mock";
 
-export type TreasureRarity = "반짝" | "빛나는" | "전설";
+export type TreasureRarity = "반짝" | "빛나는" | "전설" | "신화";
 
 export interface Treasure {
   id: string;
@@ -16,7 +16,7 @@ export interface Treasure {
   bonus: number;
 }
 
-// 5개 능력치 × 6종 = 30종 (반짝·빛나는·전설 각 10종)
+// 5개 능력치 × 7종 = 35종 (반짝·빛나는·전설 각 10종, 신화 5종)
 export const TREASURES: Treasure[] = [
   // 💪 힘
   { id: "rock", name: "단단한 주먹돌", emoji: "🪨", rarity: "반짝", stat: "힘", bonus: 1 },
@@ -25,6 +25,7 @@ export const TREASURES: Treasure[] = [
   { id: "hammer", name: "번쩍 망치", emoji: "🔨", rarity: "빛나는", stat: "힘", bonus: 2 },
   { id: "dumbbell", name: "용기의 아령", emoji: "🏋️", rarity: "전설", stat: "힘", bonus: 3 },
   { id: "shield", name: "용사의 방패", emoji: "🛡️", rarity: "전설", stat: "힘", bonus: 3 },
+  { id: "titan", name: "타이탄의 건틀릿", emoji: "🧤", rarity: "신화", stat: "힘", bonus: 4 },
   // 🗣️ 말하기
   { id: "shell", name: "소라 마이크", emoji: "🐚", rarity: "반짝", stat: "말하기", bonus: 1 },
   { id: "parrot", name: "수다쟁이 앵무새", emoji: "🦜", rarity: "반짝", stat: "말하기", bonus: 1 },
@@ -32,6 +33,7 @@ export const TREASURES: Treasure[] = [
   { id: "storybook", name: "이야기꾼의 책", emoji: "📚", rarity: "빛나는", stat: "말하기", bonus: 2 },
   { id: "goldmic", name: "황금 마이크", emoji: "🎙️", rarity: "전설", stat: "말하기", bonus: 3 },
   { id: "radio", name: "은하 라디오", emoji: "📻", rarity: "전설", stat: "말하기", bonus: 3 },
+  { id: "starsong", name: "별의 노래", emoji: "🎶", rarity: "신화", stat: "말하기", bonus: 4 },
   // 🎨 그리기
   { id: "crayon", name: "무지개 크레파스", emoji: "🖍️", rarity: "반짝", stat: "그리기", bonus: 1 },
   { id: "pencil", name: "알록달록 색연필", emoji: "✏️", rarity: "반짝", stat: "그리기", bonus: 1 },
@@ -39,6 +41,7 @@ export const TREASURES: Treasure[] = [
   { id: "sketchbook", name: "마법 스케치북", emoji: "📒", rarity: "빛나는", stat: "그리기", bonus: 2 },
   { id: "legendbrush", name: "전설의 붓", emoji: "🖌️", rarity: "전설", stat: "그리기", bonus: 3 },
   { id: "palette", name: "무지개 팔레트", emoji: "🌈", rarity: "전설", stat: "그리기", bonus: 3 },
+  { id: "cosmicbrush", name: "우주의 붓", emoji: "🪐", rarity: "신화", stat: "그리기", bonus: 4 },
   // 🔍 관찰
   { id: "magnifier", name: "작은 돋보기", emoji: "🔎", rarity: "반짝", stat: "관찰", bonus: 1 },
   { id: "flashlight", name: "탐정 손전등", emoji: "🔦", rarity: "반짝", stat: "관찰", bonus: 1 },
@@ -46,6 +49,7 @@ export const TREASURES: Treasure[] = [
   { id: "map", name: "비밀 지도", emoji: "🗺️", rarity: "빛나는", stat: "관찰", bonus: 2 },
   { id: "eagleeye", name: "매의 눈 렌즈", emoji: "👁️", rarity: "전설", stat: "관찰", bonus: 3 },
   { id: "crystalball", name: "별빛 수정 구슬", emoji: "🔮", rarity: "전설", stat: "관찰", bonus: 3 },
+  { id: "compass", name: "시간의 나침반", emoji: "🧭", rarity: "신화", stat: "관찰", bonus: 4 },
   // ✋ 손재주
   { id: "thread", name: "튼튼한 실타래", emoji: "🧵", rarity: "반짝", stat: "손재주", bonus: 1 },
   { id: "needle", name: "반짝 바늘", emoji: "🪡", rarity: "반짝", stat: "손재주", bonus: 1 },
@@ -53,12 +57,19 @@ export const TREASURES: Treasure[] = [
   { id: "ruler", name: "척척 접이식 자", emoji: "📏", rarity: "빛나는", stat: "손재주", bonus: 2 },
   { id: "scissors", name: "신비의 가위", emoji: "✂️", rarity: "전설", stat: "손재주", bonus: 3 },
   { id: "gear", name: "황금 톱니바퀴", emoji: "⚙️", rarity: "전설", stat: "손재주", bonus: 3 },
+  { id: "creationkey", name: "창조의 열쇠", emoji: "🗝️", rarity: "신화", stat: "손재주", bonus: 4 },
 ];
 
-export const TREASURE_STYLE: Record<TreasureRarity, { frame: string; bg: string; badge: string }> = {
-  반짝: { frame: "from-stone-300 to-stone-400", bg: "from-stone-100 to-stone-200", badge: "bg-stone-200" },
-  빛나는: { frame: "from-sky-300 to-violet-400", bg: "from-sky-100 to-violet-200", badge: "bg-sky-200" },
-  전설: { frame: "from-amber-300 to-yellow-500", bg: "from-amber-100 to-orange-200", badge: "bg-amber-200" },
+export const TREASURE_STYLE: Record<TreasureRarity, { frame: string; bg: string; badge: string; text: string }> = {
+  반짝: { frame: "from-stone-300 to-stone-400", bg: "from-stone-100 to-stone-200", badge: "bg-stone-200", text: "text-stone-800" },
+  빛나는: { frame: "from-sky-300 to-violet-400", bg: "from-sky-100 to-violet-200", badge: "bg-sky-200", text: "text-violet-950" },
+  전설: { frame: "from-amber-300 to-yellow-500", bg: "from-amber-100 to-orange-200", badge: "bg-amber-200", text: "text-amber-950" },
+  신화: {
+    frame: "from-fuchsia-400 via-pink-400 to-amber-300",
+    bg: "from-fuchsia-100 via-violet-100 to-amber-100",
+    badge: "bg-fuchsia-200",
+    text: "text-fuchsia-950",
+  },
 };
 
 const BY_ID: Record<string, Treasure> = Object.fromEntries(TREASURES.map((t) => [t.id, t]));
@@ -70,11 +81,12 @@ export function treasureById(id?: string | null): Treasure | null {
 
 const RARITY_WEIGHT: Array<[TreasureRarity, number]> = [
   ["반짝", 60],
-  ["빛나는", 30],
+  ["빛나는", 25],
   ["전설", 10],
+  ["신화", 5],
 ];
 
-// 희귀도 가중 랜덤 (전설은 10%)
+// 희귀도 가중 랜덤 (반짝 60 · 빛나는 25 · 전설 10 · 신화 5)
 export function rollTreasure(rand: () => number = Math.random): Treasure {
   const total = RARITY_WEIGHT.reduce((s, [, w]) => s + w, 0);
   let r = rand() * total;
