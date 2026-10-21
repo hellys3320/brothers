@@ -32,12 +32,15 @@ export default function JobCardFace({
   job,
   no,
   socket = null,
+  emptySocketLabel = "빈 소켓",
   onSocketClick,
   className = "",
 }: {
   job: JobCard;
   no?: string;
   socket?: Treasure | null;
+  /** 소켓이 비어 있을 때 보여줄 문구 (상대 카드의 보물 강화 표시 등) */
+  emptySocketLabel?: string;
   onSocketClick?: () => void;
   className?: string;
 }) {
@@ -120,7 +123,7 @@ export default function JobCardFace({
                 : "border-2 border-dashed border-stone-200 text-stone-400"
             }`}
           >
-            {socket ? `${socket.emoji} ${socket.name} · ${socket.stat}+${socket.bonus}` : "빈 소켓"}
+            {socket ? `${socket.emoji} ${socket.name} · ${socket.stat}+${socket.bonus}` : emptySocketLabel}
           </div>
         )}
 

@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { MOCK_JOBS } from "@/lib/mock";
+import { MOCK_JOBS, type JobCard } from "@/lib/mock";
+import { loadJobCards } from "@/lib/jobMission";
 import { myCode } from "@/lib/friends";
 import { loadMe } from "@/lib/me";
 import { addXP, getXP, levelFor } from "@/lib/xp";
 import { battleLevelBenefit, battleXPFor, clampLevel, momentumBonusFor } from "@/lib/battleLevel";
 import { speak } from "@/lib/speak";
 import JobCardFace from "@/components/JobCardFace";
-import { loadSockets, socketBonusOf, socketFor } from "@/lib/treasures";
+import { loadSockets, socketBonusOf, socketFor, type Treasure } from "@/lib/treasures";
 import type { Battle, BattleRound } from "@/app/api/battle/route";
 
 const STATS = ["힘", "말하기", "그리기", "관찰", "손재주"];
@@ -29,13 +30,9 @@ function noOf(code: string): string {
   return i >= 0 ? String(i + 1).padStart(3, "0") : "???";
 }
 
-function ownedCodes(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem("brothers-jobs-visited") ?? "[]");
-  } catch {
-    return [];
-  }
+function ownedJobCards(): JobCard[] {
+  const owned = new Set(loadJobCards());
+  return MOCK_JOBS.filter((j) => owned.has(j.code));
 }
 
 function claimBattleXP(id: string, won: boolean, level: number) {
@@ -59,7 +56,67 @@ function pval(code: string, stat: string): number {
   return typeof p[stat] === "number" ? p[stat] : 0;
 }
 
-// 3판 덱 짜기 (남은 카드 + 스탯 고르기 + 레벨 기세 한 판)
+/** 수집함과 똑같은 직업카드 앞면을 배틀에서도 그대로 보여준다. */
+function CardTile({
+  job,
+  no,
+  socket,
+  selected = false,
+  disabled = false,
+  badge,
+  onClick,
+}: {
+  job: JobCard;
+  no?: string;
+  socket?: Treasure | null;
+  selected?: boolean;
+  disabled?: boolean;
+  badge?: string;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={selected}
+      aria-label={`${job.name} 카드${badge ? `, ${badge}` : ""}`}
+      className={`relative block w-full rounded-2xl text-left transition ${
+        selected ? "ring-4 ring-amber-400" : ""
+      } ${disabled ? "cursor-not-allowed grayscale" : "hover:-translate-y-0.5"}`}
+    >
+      <JobCardFace job={job} no={no} socket={socket} />
+      {badge && (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-stone-900/25">
+          <span className="whitespace-nowrap rounded-full bg-stone-900/85 px-2 py-0.5 text-[10px] font-black text-white shadow">
+            {badge}
+          </span>
+        </span>
+      )}
+    </button>
+  );
+}
+
+function NeedCards({ have, title, note }: { have: number; title: string; note: string }) {
+  return (
+    <div className="rounded-3xl bg-white p-6 text-center shadow">
+      <p className="text-5xl">🎴</p>
+      <h2 className="mt-2 text-2xl font-black">{title}</h2>
+      <p className="mt-2 font-bold text-stone-600">{note}</p>
+      <p className="mt-1 text-xl font-black text-violet-700">지금 {have}장 보유</p>
+      <div className="mt-3 flex flex-col gap-2">
+        <Link href="/jobs" className="rounded-2xl bg-sky-300 px-4 py-3 text-center text-xl font-black">
+          직업 도감에서 카드 모으기
+        </Link>
+        <Link href="/mybox" className="rounded-2xl bg-white px-4 py-3 text-center font-black shadow">
+          내 수집함 보기
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// 3판 덱 짜기 (내 카드 + 스탯 고르기 + 레벨 기세 한 판)
 function DeckBuilder({
   title,
   onDone,
@@ -71,10 +128,7 @@ function DeckBuilder({
   allowMomentum?: boolean;
   level: number;
 }) {
-  const [pool] = useState(() => {
-    const owned = ownedCodes();
-    return owned.length >= 3 ? MOCK_JOBS.filter((j) => owned.includes(j.code)) : MOCK_JOBS;
-  });
+  const [pool] = useState(ownedJobCards);
   const [sockets] = useState(loadSockets);
   const [picks, setPicks] = useState<BattleRound[]>([
     { card: "", stat: "힘" },
@@ -82,27 +136,47 @@ function DeckBuilder({
     { card: "", stat: "힘" },
   ]);
   const [momentumRound, setMomentumRound] = useState<number | null>(null);
+  const [activeRound, setActiveRound] = useState(0);
   const benefit = battleLevelBenefit(level);
   const momentum = allowMomentum ? benefit.momentum : 0;
-  const used = picks.map((p) => p.card).filter(Boolean);
+  const ready = picks.every((p) => p.card);
 
-  function setPick(i: number, card: string) {
-    setPicks((prev) => prev.map((p, k) => (k === i ? { ...p, card } : p)));
-  }
   function setStat(i: number, stat: string) {
     setPicks((prev) => prev.map((p, k) => (k === i ? { ...p, stat } : p)));
   }
 
-  const ready = picks.every((p) => p.card);
+  // 다른 판에 쓴 카드를 누르면 이 판으로 옮기고, 원래 판은 비우거나 서로 바꾼다.
+  function chooseCard(code: string) {
+    const next = picks.map((p) => ({ ...p }));
+    const oldIndex = next.findIndex((p, i) => i !== activeRound && p.card === code);
+    if (oldIndex >= 0) {
+      next[oldIndex].card = next[activeRound].card;
+    }
+    next[activeRound].card = code;
+    setPicks(next);
+
+    const nextEmpty = next.findIndex((p) => !p.card);
+    if (nextEmpty >= 0) setActiveRound(nextEmpty);
+  }
 
   function finish() {
     onDone(picks.map((p, i) => ({ ...p, momentum: i === momentumRound && momentum > 0 })));
   }
 
+  if (pool.length < 3) {
+    return (
+      <NeedCards
+        have={pool.length}
+        title="직업카드가 3장 필요해!"
+        note="친구와 대결하려면 수집함에 있는 내 직업카드 3장으로 덱을 짜야 해."
+      />
+    );
+  }
+
   return (
     <div className="rounded-3xl bg-white p-5 shadow">
       <h2 className="text-2xl font-black">{title}</h2>
-      <p className="font-bold text-stone-500">3판에 낼 카드 1장씩 + 겨룰 힘 1개씩!</p>
+      <p className="font-bold text-stone-500">수집함에서 모은 내 카드 3장으로 덱을 짜자!</p>
       <div className="mt-2 rounded-2xl bg-amber-50 p-3 text-center">
         {allowMomentum ? (
           momentum > 0 ? (
@@ -116,80 +190,109 @@ function DeckBuilder({
           <p className="font-black text-stone-500">👫 둘이서 모드는 레벨 기세 없이 공정하게!</p>
         )}
       </div>
-      {[0, 1, 2].map((r) => (
-        <div key={r} className="mt-3 rounded-2xl bg-stone-50 p-3">
-          <p className="font-black">{r + 1}판</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {pool.slice(0, 30).map((j) => {
-              const taken = used.includes(j.code) && picks[r].card !== j.code;
-              return (
-                <button
-                  key={j.code}
-                  type="button"
-                  disabled={taken}
-                  onClick={() => setPick(r, j.code)}
-                  className={`rounded-xl px-2 py-1 text-xl font-black ${picks[r].card === j.code ? "bg-amber-400" : taken ? "bg-stone-100 opacity-40" : "bg-white shadow"}`}
-                >
-                  {j.emoji}
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {STATS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStat(r, s)}
-                className={`rounded-full px-3 py-1 font-black ${picks[r].stat === s ? "bg-violet-400" : "bg-white shadow"}`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          {allowMomentum && (
-            <button
-              type="button"
-              disabled={momentum === 0}
-              onClick={() => setMomentumRound((cur) => (cur === r ? null : r))}
-              className={`mt-2 rounded-full px-3 py-1 font-black shadow disabled:opacity-40 ${
-                momentumRound === r ? "bg-amber-400" : "bg-white"
+
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {[0, 1, 2].map((r) => {
+          const p = picks[r];
+          const job = p.card ? jobOf(p.card) : null;
+          const active = activeRound === r;
+          return (
+            <div
+              key={r}
+              className={`rounded-2xl p-1.5 transition ${
+                active ? "bg-amber-100 ring-2 ring-amber-400" : "bg-stone-50"
               }`}
             >
-              {momentum === 0
-                ? "🔒 기세 Lv.3"
-                : momentumRound === r
-                  ? `⭐ 기세 +${momentum} 사용!`
-                  : `⭐ 이 판에 기세 +${momentum}`}
-            </button>
-          )}
-          {picks[r].card ? (
-            <div className="mt-2 flex items-center gap-3">
-              <div className="w-20 shrink-0">
-                <JobCardFace job={jobOf(picks[r].card)!} no={noOf(picks[r].card)} socket={socketFor(sockets, picks[r].card)} />
-              </div>
-              <p className="font-bold">
-                {jobOf(picks[r].card)?.name} × {picks[r].stat}로 겨루기!
-              </p>
+              <button
+                type="button"
+                onClick={() => setActiveRound(r)}
+                aria-label={`${r + 1}판 카드 슬롯`}
+                className="block w-full text-left"
+              >
+                {job ? (
+                  <JobCardFace job={job} no={noOf(job.code)} socket={socketFor(sockets, job.code)} />
+                ) : (
+                  <div className="flex aspect-[5/7] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-300 bg-white/70 text-center">
+                    <span className="text-2xl">＋</span>
+                    <span className="text-[11px] font-black text-stone-500">
+                      {r + 1}판
+                      <br />
+                      카드
+                    </span>
+                  </div>
+                )}
+              </button>
+              <select
+                value={p.stat}
+                onChange={(e) => setStat(r, e.target.value)}
+                aria-label={`${r + 1}판 겨룰 힘`}
+                className="mt-1 w-full rounded-lg border-0 bg-white px-1 py-1 text-center text-[11px] font-black shadow-sm"
+              >
+                {STATS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              {allowMomentum && (
+                <button
+                  type="button"
+                  disabled={momentum === 0}
+                  onClick={() => setMomentumRound((cur) => (cur === r ? null : r))}
+                  className={`mt-1 w-full rounded-lg px-1 py-1 text-[10px] font-black disabled:opacity-40 ${
+                    momentumRound === r ? "bg-amber-400" : "bg-white shadow-sm"
+                  }`}
+                >
+                  {momentum === 0 ? "🔒 기세" : momentumRound === r ? `⭐ +${momentum}` : "⭐ 기세"}
+                </button>
+              )}
             </div>
-          ) : (
-            <p className="mt-1 font-bold text-stone-500">카드 골라!</p>
-          )}
+          );
+        })}
+      </div>
+
+      <div className="mt-4 rounded-2xl bg-stone-50 p-3">
+        <div className="flex items-end justify-between gap-2">
+          <p className="font-black">🎴 내 직업카드 {pool.length}장</p>
+          <p className="text-right text-[11px] font-bold text-stone-500">{activeRound + 1}판에 넣을 카드를 눌러!</p>
         </div>
-      ))}
+        <div className="mt-3 grid max-h-[26rem] grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4">
+          {pool.map((j) => {
+            const usedRound = picks.findIndex((p) => p.card === j.code);
+            const isSelected = usedRound === activeRound;
+            const usedElsewhere = usedRound >= 0 && usedRound !== activeRound;
+            return (
+              <CardTile
+                key={j.code}
+                job={j}
+                no={noOf(j.code)}
+                socket={socketFor(sockets, j.code)}
+                selected={isSelected}
+                badge={usedElsewhere ? `${usedRound + 1}판 사용` : undefined}
+                onClick={() => chooseCard(j.code)}
+              />
+            );
+          })}
+        </div>
+        <p className="mt-2 text-center text-[11px] font-bold text-stone-500">
+          다른 판에 쓴 카드를 누르면 이 판으로 옮겨져!
+        </p>
+      </div>
+
       <button
         type="button"
         disabled={!ready}
         onClick={finish}
         className="mt-3 w-full rounded-2xl bg-red-400 px-4 py-3 text-xl font-black disabled:opacity-40"
       >
-        확정!
+        {ready ? "이 덱으로 확정!" : "카드 3장을 골라줘!"}
       </button>
     </div>
   );
 }
 
 function ResultView({ battle, myCode: me, myLevel }: { battle: Battle; myCode: string; myLevel: number }) {
+  const [sockets] = useState(loadSockets);
   const iAmA = battle.a.code === me;
   const myWins = battle.result?.filter((r) => (iAmA ? r.win === "a" : r.win === "b")).length ?? 0;
   const won = battle.winnerCode === me;
@@ -233,11 +336,29 @@ function ResultView({ battle, myCode: me, myLevel }: { battle: Battle; myCode: s
                   {r.win === "draw" ? "➖" : (r.win === "a") === mineFirst ? "⭕" : "❌"} {i + 1}판 · {a.stat} 대결!
                 </p>
                 <div className="mt-1 flex items-center gap-2">
-                  <div className="w-14 shrink-0">{aj && <JobCardFace job={aj} no={noOf(a.card)} />}</div>
+                  <div className="w-14 shrink-0">
+                    {aj && (
+                      <JobCardFace
+                        job={aj}
+                        no={noOf(a.card)}
+                        socket={iAmA ? socketFor(sockets, a.card) : null}
+                        emptySocketLabel={!iAmA && a.bonus ? `💠 보물 +${a.bonus}` : "빈 소켓"}
+                      />
+                    )}
+                  </div>
                   <p className="text-xl">{r.aVal}</p>
                   <span className="font-black text-stone-400">vs</span>
                   <p className="text-xl">{r.bVal}</p>
-                  <div className="w-14 shrink-0">{b && bj && <JobCardFace job={bj} no={noOf(b.card)} />}</div>
+                  <div className="w-14 shrink-0">
+                    {b && bj && (
+                      <JobCardFace
+                        job={bj}
+                        no={noOf(b.card)}
+                        socket={!iAmA ? socketFor(sockets, b.card) : null}
+                        emptySocketLabel={iAmA && b.bonus ? `💠 보물 +${b.bonus}` : "빈 소켓"}
+                      />
+                    )}
+                  </div>
                 </div>
                 {(a.momentum || b?.momentum || a.bonus || b?.bonus) && (
                   <p className="mt-1 text-sm font-bold text-stone-500">
@@ -298,6 +419,7 @@ export default function BattleClient() {
   const [me] = useState(() => myCode());
   const [myName] = useState(() => loadMe()?.nickname ?? "탐험대원");
   const [myLevel, setMyLevel] = useState(() => clampLevel(levelFor(getXP()).lv));
+  const [localSockets] = useState(loadSockets);
 
   // 배틀 보상으로 레벨이 오르면 배틀 화면의 혜택도 바로 갱신
   useEffect(() => {
@@ -434,10 +556,12 @@ export default function BattleClient() {
   const [localWinner, setLocalWinner] = useState<string | null>(null);
 
   function resolveLocal(p1: { name: string; rounds: BattleRound[] }, p2: { name: string; rounds: BattleRound[] }) {
-    const results = p1.rounds.map((ar, i) => {
-      const br = p2.rounds[i];
-      const aVal = pval(ar.card, ar.stat);
-      const bVal = pval(br.card, br.stat);
+    const aRounds = withSockets(p1.rounds);
+    const bRounds = withSockets(p2.rounds);
+    const results = aRounds.map((ar, i) => {
+      const br = bRounds[i];
+      const aVal = pval(ar.card, ar.stat) + (ar.bonus ?? 0);
+      const bVal = pval(br.card, br.stat) + (br.bonus ?? 0);
       return { aVal, bVal, win: aVal === bVal ? "draw" : aVal > bVal ? "a" : ("b" as string) };
     });
     const aW = results.filter((r) => r.win === "a").length;
@@ -445,7 +569,7 @@ export default function BattleClient() {
     const winner = aW === bW ? "무승부!" : aW > bW ? p1.name : p2.name;
     const id = `local-${Date.now()}`;
     claimBattleXP(id, aW !== bW, myLevel);
-    setView({ k: "local-result", p1name: p1.name, p2name: p2.name, results, aRounds: p1.rounds, bRounds: p2.rounds, level: myLevel });
+    setView({ k: "local-result", p1name: p1.name, p2name: p2.name, results, aRounds, bRounds, level: myLevel });
     setLocalWinner(winner);
     speak(`${winner}!`);
   }
@@ -607,13 +731,26 @@ export default function BattleClient() {
               const b = view.bRounds[i];
               const aj = jobOf(a.card);
               const bj = jobOf(b.card);
-              const av = pval(a.card, a.stat);
-              const bv = pval(b.card, b.stat);
+              const av = r.aVal;
+              const bv = r.bVal;
               return (
-                <p key={i} className="mt-1 rounded-2xl bg-stone-50 p-3 font-black">
-                  {r.win === "draw" ? "➖" : r.win === "a" ? `⭕ ${view.p1name}` : `⭕ ${view.p2name}`} {i + 1}판 ·{" "}
-                  {aj?.emoji}{av} vs {bj?.emoji}{bv} ({a.stat})
-                </p>
+                <div key={i} className="mt-2 rounded-2xl bg-stone-50 p-3 font-black">
+                  <p>
+                    {r.win === "draw" ? "➖" : r.win === "a" ? `⭕ ${view.p1name}` : `⭕ ${view.p2name}`} {i + 1}판 ·{" "}
+                    {a.stat} 대결!
+                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="w-14 shrink-0">
+                      {aj && <JobCardFace job={aj} no={noOf(a.card)} socket={socketFor(localSockets, a.card)} />}
+                    </div>
+                    <p className="text-xl">{av}</p>
+                    <span className="font-black text-stone-400">vs</span>
+                    <p className="text-xl">{bv}</p>
+                    <div className="w-14 shrink-0">
+                      {bj && <JobCardFace job={bj} no={noOf(b.card)} socket={socketFor(localSockets, b.card)} />}
+                    </div>
+                  </div>
+                </div>
               );
             })}
             <button type="button" onClick={() => { setView({ k: "menu" }); setLocalWinner(null); }} className="mt-3 w-full rounded-2xl bg-white px-4 py-3 font-black shadow">
@@ -649,12 +786,10 @@ function PlayView({
   const [stat, setStat] = useState(STATS[0]);
   const [momentumUsed, setMomentumUsed] = useState(false);
   const [useMomentum, setUseMomentum] = useState(false);
+  const [pool] = useState(ownedJobCards);
+  const [sockets] = useState(loadSockets);
   const myMomentum = battleLevelBenefit(level).momentum;
-  const [pool] = useState(() => {
-    const owned = ownedCodes();
-    return owned.length >= 3 ? MOCK_JOBS.filter((j) => owned.includes(j.code)) : MOCK_JOBS;
-  });
-  const used = picks.map((p) => p.card);
+  const selectedJob = code ? jobOf(code) : null;
 
   function confirm() {
     if (!code) return;
@@ -671,6 +806,16 @@ function PlayView({
     }
   }
 
+  if (pool.length < 3) {
+    return (
+      <NeedCards
+        have={pool.length}
+        title="이 대결에 낼 카드가 3장 필요해!"
+        note="친구의 대결은 수집함에 있는 내 직업카드 3장으로만 받을 수 있어."
+      />
+    );
+  }
+
   return (
     <div className="rounded-3xl bg-white p-5 shadow">
       <p className="font-black text-stone-500">{round + 1}판 / 3판</p>
@@ -680,7 +825,11 @@ function PlayView({
         </p>
         {foeJob && (
           <div className="mt-2 w-28">
-            <JobCardFace job={foeJob} no={noOf(foe.card)} />
+            <JobCardFace
+              job={foeJob}
+              no={noOf(foe.card)}
+              emptySocketLabel={foe.bonus ? `💠 보물 +${foe.bonus}` : "빈 소켓"}
+            />
           </div>
         )}
         <p className="mt-1 text-lg font-black">
@@ -690,22 +839,38 @@ function PlayView({
         </p>
       </div>
       <p className="mt-3 text-xl font-black">내 카드 내기!</p>
-      <div className="mt-1 flex max-h-48 flex-wrap gap-1 overflow-y-auto">
-        {pool.slice(0, 40).map((j) => {
-          const taken = used.includes(j.code);
+      <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto rounded-2xl bg-stone-50 p-2 sm:grid-cols-4">
+        {pool.map((j) => {
+          const usedRound = picks.findIndex((p) => p.card === j.code);
+          const taken = usedRound >= 0;
           return (
-            <button
+            <CardTile
               key={j.code}
-              type="button"
+              job={j}
+              no={noOf(j.code)}
+              socket={socketFor(sockets, j.code)}
+              selected={code === j.code}
               disabled={taken}
+              badge={taken ? `${usedRound + 1}판 사용` : undefined}
               onClick={() => setCode(j.code)}
-              className={`rounded-xl px-2 py-1 text-2xl ${code === j.code ? "bg-amber-400" : taken ? "bg-stone-100 opacity-40" : "bg-stone-50 shadow"}`}
-            >
-              {j.emoji}
-            </button>
+            />
           );
         })}
       </div>
+      {selectedJob && (
+        <div className="mt-2 flex items-center gap-3 rounded-2xl bg-amber-50 p-2">
+          <div className="w-20 shrink-0">
+            <JobCardFace
+              job={selectedJob}
+              no={noOf(selectedJob.code)}
+              socket={socketFor(sockets, selectedJob.code)}
+            />
+          </div>
+          <p className="font-black">
+            {selectedJob.name} × {stat}로 겨루기!
+          </p>
+        </div>
+      )}
       <div className="mt-2 flex flex-wrap gap-1">
         {STATS.map((s) => (
           <button
